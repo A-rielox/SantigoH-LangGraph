@@ -1,26 +1,49 @@
+
+# Load environment variables and set up auto-reload
+from dotenv import load_dotenv
+load_dotenv(override=True)
+# ==================================================
+
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_openai import ChatOpenAI
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # 1. Cargar el documento PDF
-loader = PyPDFLoader("C:\\Users\\santiago\\curso_langchain\\Tema 3\\quijote.pdf")
+loader = PyPDFLoader("/home/arielox/dev/learning/SantiagoH/LangGraph/seccion5/quijote.pdf")
 pages = loader.load()
 
-# 2. Combinar todas las páginas en un texto único
-full_text = ""
-for page in pages:
-    full_text += page.page_content + "\n"
+
+# Dividir el texto en chunks mas pequeños
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=10000,
+    chunk_overlap=200
+)
+
+chunks = text_splitter.split_documents(pages)
+
 
 # 3. Pasar el texto al LLM
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
-response = llm.invoke(f"Haz un resumen de los puntos mas importantes del siguiente documento: {full_text}")
+llm = ChatOpenAI(model="deepseek-chat", temperature=0.2)
+summaries = []
 
-print(response)
+i = 0
+for chunk in chunks:
+    if i > 10: # p'q no gaste tanto dinero haciendo todo el libro
+        break
+
+    response = llm.invoke(f"Haz un resumen de los puntos mas importantes del siguiente texto: {chunk.page_content}")
+    summaries.append(response.content)
+    i += 1
+
+print(summaries)
+
+final_summary = llm.invoke(f"Combina y sintetiza estos resumenes en un resumen coherente y completo: {" ".join(summaries)}")
+print(final_summary.content)
 
 
-# echo "# SantigoH-LangGraph" >> README.md
-# git init
-# git add README.md
-# git commit -m "first commit"
-# git branch -M main
-# git remote add origin https://github.com/A-rielox/SantigoH-LangGraph.git
-# git push -u origin main
+
+
+
+
+
+# /LangGraph/seccion5/03-text_splitters.py
