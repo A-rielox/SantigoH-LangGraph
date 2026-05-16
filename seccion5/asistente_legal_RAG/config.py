@@ -1,4 +1,6 @@
 import os
+from dotenv import load_dotenv
+load_dotenv(override=True)
 
 # Configuración de modelos
 EMBEDDING_MODEL = "text-embedding-3-large"

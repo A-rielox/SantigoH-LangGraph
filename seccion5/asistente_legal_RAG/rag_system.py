@@ -4,8 +4,7 @@ from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
-from langchain_classic.retrievers.multi_query import MultiQueryRetriever
-# from langchain.retrievers import EnsembleRetriever
+from langchain_classic.retrievers import EnsembleRetriever, MultiQueryRetriever
 import streamlit as st
 
 from config import *
@@ -50,12 +49,13 @@ def initialize_rag_system():
         prompt=multi_query_prompt
     )
 
-    # Ensemble Retriever que combinar MMR y similarity
+    # Ensemble Retriever que combinar MMR y similarity 
+    # 📢📢
     if ENABLE_HYBRID_SEARCH:
         ensemble_retriever = EnsembleRetriever(
             retrievers=[mmr_multi_retriever, similarity_retriever],
             weights=[0.7, 0.3], # mayor peso a MMR
-            similarity_threshold=SIMILARITY_THRESHOLD
+            similarity_threshold=SIMILARITY_THRESHOLD # <-- p'q no muestre resultado con similitud menor a esto
         )
         final_retriever = ensemble_retriever
     else:
@@ -108,30 +108,31 @@ def query_rag(question):
         # Obtener respuesta
         response = rag_chain.invoke(question)
 
-        # Obtener documentos para mostrarlos
-        docs = retriever.get_relevant_documents(question)
+        # Obtener documentos para mostrarlos, muestra los documentos de los que saca la informacion
+        docs = retriever.invoke(question)
 
         # Formatear los documentos para mostrar
         docs_info = []
         for i, doc in enumerate(docs[:SEARCH_K], 1):
-            doc_info = {
+            doc_info = {   # <-- es p'c/ fragmento
                 "fragmento": i,
-                "contenido": doc.page_content[:1000] + "..." if len(doc.page_content) > 1000 else doc.page_content,
+                "contenido": doc.page_content[:1000] + "..." if len(doc.page_content) > 1000 else doc.page_content,   # <__ va a mostrar solo los primeros 1000 caracteres del fragmento
                 # "fuente": doc.metadata.get('source', 'No especificada').split("\\")[-1],
                 # Nota: Esto funciona asumiendo que la DB se creó en Linux (rutas con '/')
                 "fuente": os.path.basename(doc.metadata.get('source', 'No especificada')),
                 "pagina": doc.metadata.get('page', 'No especificada')
             }
-            docs_info.append(doc_info)
+            docs_info.append(doc_info) # <-- docs_info va a tener toda esta informacion de los fragmentos concatenada 
         
         return response, docs_info
     
     except Exception as e:
         error_msg = f"Error al procesar la cosulta: {str(e)}"
         return error_msg, []
-    
+
 def get_retriever_info():
     """Obtiene información sobre la configuración del retriever"""
+
     return {
         "tipo": f"{SEARCH_TYPE.upper()} + MultiQuery" + (" + Hybrid" if ENABLE_HYBRID_SEARCH else ""),
         "documentos": SEARCH_K,
@@ -140,7 +141,69 @@ def get_retriever_info():
         "umbral": SIMILARITY_THRESHOLD if ENABLE_HYBRID_SEARCH else "N/A"
     }
 
+#   📢📢
+# Ese bloque de código es el corazón de la estrategia de recuperación (retrieval)
+#   del sistema. Su objetivo es aplicar una técnica llamada Búsqueda Híbrida o
+#   Ensemble Retrieval para no depender de un solo método de búsqueda y así obtener
+#   mejores resultados.
 
+#   Aquí te explico qué hace cada parte y por qué es una buena idea:
+
+#   1. ¿Qué hace exactamente?
+#   El EnsembleRetriever toma los resultados de dos algoritmos diferentes y los
+#   combina en una única lista final de documentos, dándoles una importancia distinta
+#   a cada uno.
+
+#    * retrievers=[mmr_multi_retriever, similarity_retriever]: Está mezclando dos
+#      fuentes:
+#        * mmr_multi_retriever: Es el "inteligente". Primero usa un LLM para generar
+#          varias versiones de tu pregunta (MultiQuery) y luego usa el algoritmo MMR
+#          para asegurarse de que los fragmentos encontrados sean relevantes pero no
+#          repetidos (busca diversidad).
+#        * similarity_retriever: Es el "clásico". Simplemente busca los fragmentos
+#          que más se parecen semánticamente a la pregunta original, sin preocuparse
+#          por si la información es redundante.
+#    * weights=[0.7, 0.3]: Aquí defines la jerarquía. Le estás diciendo al sistema:
+#      "Confío un 70% en la diversidad y múltiples consultas de MMR, y un 30% en la
+#      búsqueda por similitud tradicional". Los resultados del primero tendrán más
+#      peso al decidir qué mostrarte.
+#    * similarity_threshold: (Usado en algunas implementaciones o wrappers) Filtra
+#      aquellos documentos que, a pesar de ser los mejores encontrados, no alcanzan
+#      un nivel mínimo de "parecido" con la pregunta para evitar meter ruido o
+#      información irrelevante.
+
+#   ---
+
+#   2. La idea detrás (El "Por qué")
+#   ¿Por qué no usar solo uno? Porque cada método tiene "puntos ciegos":
+
+#    1. El problema de la Similitud pura: A veces te devuelve 3 fragmentos que dicen
+#       exactamente lo mismo (ej: la misma cláusula de fianza que aparece en tres
+#       contratos distintos). Esto desperdicia espacio y confunde al LLM.
+#    2. El problema del MultiQuery/MMR: A veces, al intentar ser tan "diverso" y
+#       buscar diferentes formas de preguntar, puede alejarse un poco de la respuesta
+#       más obvia y literal que una búsqueda simple encontraría en un segundo.
+
+#   La Solución Híbrida:
+#   Al combinarlos, obtienes lo mejor de los dos mundos:
+#    * De MMR/MultiQuery obtienes inteligencia, diferentes ángulos de la pregunta y
+#      variedad de información.
+#    * De Similarity obtienes un "seguro de vida": te aseguras de que, si hay un
+#      fragmento que coincide casi palabra por palabra con la pregunta, no se quede
+#      fuera por intentar ser demasiado diverso.
+
+#   En resumen:
+#   Es como si para resolver una duda legal consultaras a un abogado experto que
+#   analiza el caso desde varios ángulos (MMR + MultiQuery) y también revisaras un
+#   índice de palabras clave (Similarity). El código combina ambas opiniones, pero le
+#   hace más caso al abogado (70%) que al índice (30%).
+
+
+
+
+
+
+######################################################################################################
 # La función format_docs(docs) es una pieza fundamental en el engranaje de este sistema RAG
 #   (Retrieval-Augmented Generation). Su función principal es actuar como un traductor o
 #   formateador que convierte los datos crudos que devuelve la base de datos vectorial en un
