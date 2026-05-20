@@ -1,13 +1,19 @@
+# Load environment variables and set up auto-reload
+from dotenv import load_dotenv
+load_dotenv(override=True)
+# ==================================================
+
+
 import hashlib
 from typing import List
 from pathlib import Path
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 
-from config import * 
+from config import *
 
 class DocumentProcessor:
     """Procesador de documentos para el sistema RAG."""
@@ -19,15 +25,15 @@ class DocumentProcessor:
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
             chunk_overlap=200,
-            length_function=len,
-            separators=["\n\n", "\n", ".", "!", "?", ",", " ", ""]
+            length_function=len,#indica q unidad ocupa el chunk_size, en este caso "caracteres"
+            separators=["\n\n", "\n", ".", "!", "?", ",", " ", ""] # separadores q puede ocupar para hacer las divisiones
         )
         
     def load_documents(self) -> List[Document]:
         """Carga documentos markdown del directorio docs."""
         print(f"📚 Cargando documentos desde {self.docs_path}")
         
-        # Cargar archivos markdown
+        # Carga todos los archivos markdown de la carpeta
         loader = DirectoryLoader(
             str(self.docs_path),
             glob="*.md",
@@ -38,12 +44,13 @@ class DocumentProcessor:
         documents = loader.load()
         
         # Enriquecer metadatos
+        # no es obligatorio pero es lo mejor, siempre eriquecer los documentos con metadatos extra
         for doc in documents:
             filename = Path(doc.metadata["source"]).stem
             doc.metadata.update({
                 "filename": filename,
                 "doc_type": self._get_doc_type(filename),
-                "doc_id": self._generate_doc_id(doc.page_content)
+                "doc_id": self._generate_doc_id(doc.page_content)# p' saber a qué documento pertenece el fragmento concreto, este es el id para este documento completo, luego se hace el "chunking" donde los chunks ocupan este id.
             })
         
         print(f"✅ Cargados {len(documents)} documentos")
@@ -51,6 +58,7 @@ class DocumentProcessor:
     
     def _get_doc_type(self, filename: str) -> str:
         """Determina el tipo de documento basado en el nombre."""
+
         if "faq" in filename.lower():
             return "faq"
         elif "manual" in filename.lower():
@@ -62,12 +70,17 @@ class DocumentProcessor:
     
     def _generate_doc_id(self, content: str) -> str:
         """Genera un ID único para el documento."""
+
         return hashlib.md5(content.encode()).hexdigest()[:8]
     
+    # Recién aquí divide los documentos 
+    # ⭐️⭐️
     def split_documents(self, documents: List[Document]) -> List[Document]:
         """Divide documentos en chunks más pequeños."""
+
         print("✂️  Dividiendo documentos en chunks...")
         
+        # llama a "split_documents" pero de la fcn "__init__", explicación en # ⭐️⭐️
         chunks = self.text_splitter.split_documents(documents)
         
         # Agregar metadatos de chunk
@@ -80,8 +93,41 @@ class DocumentProcessor:
         print(f"✅ Creados {len(chunks)} chunks")
         return chunks
     
+    def xd() -> None:
+        """✦ ¡Ah, excelente pregunta! Es muy normal confundirse con eso porque los nombres son iguales, pero se refieren a objetos distintos. Vamos a desenredarlo.
+
+        1. ¿A quién está llamando self.text_splitter.split_documents(documents)?
+
+        No se está llamando a sí misma (no hay ciclo infinito) ni a la función padre de la clase RAGSetup que creaste.
+
+        Está llamando a un método que le pertenece a un objeto de la librería LangChain. 
+
+        Si revisamos el método __init__ (línea 19), vemos esto:
+
+        1 self.text_splitter = RecursiveCharacterTextSplitter(...) Aquí estás guardando dentro de la variable self.text_splitter un objeto de la clase RecursiveCharacterTextSplitter (que viene de LangChain). 
+
+        Entonces, cuando haces:
+        1 chunks = self.text_splitter.split_documents(documents) Le estás diciendo a ese objeto específico de LangChain (RecursiveCharacterTextSplitter): "Oye, usa tu propio método interno llamado split_documents para picar esta lista de documentos". Casualmente, tú le pusiste el mismo nombre a tu función en setup_rag.py, pero son dos funciones diferentes en dos clases diferentes.
+
+        2. ¿Cómo heredan los metadatos? ¿Es siempre automático?
+
+        Sí, es siempre automático cuando usas los text splitters de LangChain.
+
+        Cuando RecursiveCharacterTextSplitter (o casi cualquier otro splitter de LangChain) recibe un objeto Document que tiene texto y metadatos (como el doc_id o el filename), el proceso interno de LangChain funciona así:
+
+        1. Lee el texto completo del documento.
+        2. Lo pica en pedacitos según el tamaño configurado.
+        3. Crea un nuevo objeto Document para cada pedacito.
+        4. Copia exactamente el mismo diccionario de metadatos del documento original y se lo pega a cada uno de esos nuevos fragmentos.
+
+        No tienes que programarlo ni especificarlo; está diseñado por defecto en la librería de LangChain para que nunca pierdas el rastro de dónde vino un fragmento de texto. 
+
+        Por eso tu función toma esos pedacitos (que ya traen el doc_id y filename copiados) y luego, tú decides agregarle además el chunk_id y el chunk_size."""
+    
+    # 👀 el parámetro "documents" son los chunks
+    # aquí se crea la DB
     def create_vectorstore(self, documents: List[Document]) -> Chroma:
-        """Crea el vectorstore con ChromaDB."""
+        """Crea el vectorstore con ChromaDB. Almacen c/chunk por separado"""
         print("🔄 Creando vectorstore con ChromaDB...")
         
         # Limpiar directorio anterior si existe
@@ -102,6 +148,7 @@ class DocumentProcessor:
         
         return vectorstore
     
+    # en caso de que no quiera crear una nueva y ya tengo una existente
     def load_existing_vectorstore(self) -> Chroma:
         """Carga vectorstore existente."""
         if not self.chroma_path.exists():
@@ -143,7 +190,7 @@ class DocumentProcessor:
         """Prueba la funcionalidad de búsqueda."""
         print(f"\n🔍 Probando búsqueda: '{query}'")
         
-        results = vectorstore.similarity_search(query, k=3)
+        results = vectorstore.similarity_search(query, k=3) # retorna solo 3 docs
         
         for i, doc in enumerate(results, 1):
             print(f"\n📄 Resultado {i}:")
@@ -182,3 +229,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+# /home/arielox/dev/learning/SantiagoH/LangGraph/seccion6/helpdesk_system/setup_rag.py

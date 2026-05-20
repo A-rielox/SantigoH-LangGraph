@@ -301,6 +301,7 @@ if __name__ == "__main__":
 # ##############################################
 #   🧭
 #
+#   file_path = os.path.join(os.path.dirname(__file__), "Simulacion_reunion.mp4")
 # Esta expresión es una forma muy común y profesional de construir rutas de archivos en
 #   Python para que funcionen en cualquier computadora (Windows, Mac o Linux).
 
@@ -332,6 +333,8 @@ if __name__ == "__main__":
 
 # ##############################################
 #   🪇
+#
+#   ext = os.path.splitext(file_path)[1].lower() #   🪇
 #
 # Esta línea se utiliza para extraer la extensión del archivo de forma segura y uniforme.
 #   Vamos a romperla en partes:
