@@ -10,10 +10,10 @@ pages = loader.load()
 
 for i, page in enumerate(pages):
     print(f"================================================================")
-    print(f"========================== Página {i + 1} ======================")
+    print(f"========================== Página {i + 1} ============================")
     print(f"Contenido: {page.page_content}")
     print(f"Metadatos: {page.metadata}")
 
 # 📢
 # "./RFC.pdf". En Python, el prefijo ./ significa "el directorio de trabajo actual de la terminal".
-# python seccion5/01-document_loaders.py     
+# python seccion5/01-document_loaders.py

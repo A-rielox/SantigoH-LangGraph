@@ -15,12 +15,11 @@ pages = loader.load()
 
 # Dividir el texto en chunks mas pequeños
 text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=10000,
+    chunk_size=3000,
     chunk_overlap=200
 )
 
 chunks = text_splitter.split_documents(pages)
-
 
 # 3. Pasar el texto al LLM
 llm = ChatOpenAI(model="deepseek-chat", temperature=0.2)
@@ -28,14 +27,14 @@ summaries = []
 
 i = 0
 for chunk in chunks:
-    if i > 10: # p'q no gaste tanto dinero haciendo todo el libro
+    if i > 5: # p'q no gaste tanto dinero haciendo todo el libro
         break
 
     response = llm.invoke(f"Haz un resumen de los puntos mas importantes del siguiente texto: {chunk.page_content}")
     summaries.append(response.content)
     i += 1
 
-print(summaries)
+# print(summaries)
 
 final_summary = llm.invoke(f"Combina y sintetiza estos resumenes en un resumen coherente y completo: {" ".join(summaries)}")
 print(final_summary.content)

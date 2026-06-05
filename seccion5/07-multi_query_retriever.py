@@ -8,9 +8,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_openai import ChatOpenAI
 from langchain_classic.retrievers.multi_query import MultiQueryRetriever
 
-
 # ⭐️⭐️⭐️ MultiQueryRetriever ->  reformula la pregunta de varias formas distintas
-
 
 vectorstore = Chroma(
     embedding_function=OpenAIEmbeddings(model="text-embedding-3-large"),

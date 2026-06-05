@@ -180,7 +180,7 @@ def create_workflow():
     return workflow.compile()
 
 # ============= FUNCIONES DE PROCESAMIENTO =============
-
+# pasa el audio de la reunión a texto
 def transcribe_media_direct(file_path: str) -> str:
     """Transcribe usando directamente la API de OpenAI Whisper."""
     try:
@@ -204,8 +204,10 @@ def transcribe_media_direct(file_path: str) -> str:
         print(f"❌ Error en transcripción: {e}")
         return f"Error: {str(e)}"
 
-def process_meeting_notes(notes: str, app):
+# ejecuta el graph con las notas de una reunión
+def process_meeting_notes(notes: str, app): # las "notes" son una reunión en texto, app es el graph
     """Procesa una nota de reunión individual."""
+
     initial_state = {
         'notes': notes,
         'participants': [],
@@ -286,12 +288,12 @@ if __name__ == "__main__":
     media_exts = {".mp4", ".mov", ".m4a", ".mp3", ".wav", ".mkv", ".webm"}
 
     if ext in media_exts:
-        notes = transcribe_media_direct(file_path) 
+        notes = transcribe_media_direct(file_path) # pasa el audio d la reunión a texto
     else: # si no es de los de arriba => ya está en texto
         with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
             notes = f.read()
 
-    result = process_meeting_notes(notes, app)
+    result = process_meeting_notes(notes, app) # ejecuta el graph con las notas de una reunión
     display_results(result, 1)
 
 

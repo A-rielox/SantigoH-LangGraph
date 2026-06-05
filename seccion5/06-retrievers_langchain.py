@@ -30,3 +30,31 @@ for i, doc in enumerate(resultados, start=1):
     print(f"Metadatos: {doc.metadata}")
 
 # python seccion5/06-retrievers_langchain.py
+
+# ✦ La principal diferencia no es el resultado (ambos te
+#   devuelven documentos similares), sino la arquitectura y
+#   la flexibilidad dentro del ecosistema de LangChain.
+
+#   Aquí te detallo las diferencias clave:
+
+#   1. Interfaz Estándar (Runnable)
+#   En el archivo 06-retrievers_langchain.py, al usar
+#   vectorstore.as_retriever(), conviertes el almacén de
+#   vectores en un objeto tipo Retriever.
+#    * Retriever: Implementa la interfaz Runnable de
+#      LangChain. Esto significa que tiene métodos
+#      estandarizados como .invoke(), .batch() y .stream().
+#    * VectorStore: El método .similarity_search() es
+#      específico de los almacenes de vectores y no sigue la
+#      misma interfaz genérica.
+
+#   2. Desacoplamiento (Modularidad)
+#    * En el archivo 05: Estás amarrado a un VectorStore. Si
+#      mañana quieres cambiar tu base de datos por una
+#      búsqueda en Google o una base de datos SQL, tendrías
+#      que cambiar gran parte de tu código.
+#    * En el archivo 06: Tu código espera un "Retriever". No
+#      le importa si la información viene de Chroma, de un
+#      PDF, de una API o de Wikipedia. Mientras el objeto
+#      tenga el método .invoke(), el resto de tu cadena
+#      (RAG) seguirá funcionando sin cambios.
