@@ -183,6 +183,7 @@ def create_workflow():
 # pasa el audio de la reunión a texto
 def transcribe_media_direct(file_path: str) -> str:
     """Transcribe usando directamente la API de OpenAI Whisper."""
+    
     try:
         print("🎙️ Transcribiendo con OpenAI Whisper API directa...")
         

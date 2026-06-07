@@ -63,10 +63,10 @@ CONFIANZA DE LA BÚSQUEDA: {confianza}
 
 Criterios de decisión:
 - AUTOMATICO: Si la información de la BD responde completamente la consulta, 
-  tiene buena confianza (>0.6), y es un tema estándar/procedimiento conocido
-  
+    tiene buena confianza (>0.6), y es un tema estándar/procedimiento conocido
+
 - ESCALADO: Si la información es insuficiente, confianza baja, problema complejo/único,
-  requiere acceso a sistemas internos, o involucra decisiones de negocio
+    requiere acceso a sistemas internos, o involucra decisiones de negocio
 
 Responde solo con "automatico" o "escalado" y una breve justificación (máximo 20 palabras):"""
         )
