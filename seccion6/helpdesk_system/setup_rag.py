@@ -19,7 +19,7 @@ from config import *
 class DocumentProcessor:
     """Procesador de documentos para el sistema RAG."""
     
-    def __init__(self, docs_path: str = "docs", chroma_path: str = "./chroma_db"):
+    def __init__(self, docs_path: str = "docs", chroma_path: str = "./chroma_db"): # 🍑🍑
         self.docs_path = Path(docs_path)
         self.chroma_path = Path(chroma_path)
         self.embeddings = OpenAIEmbeddings(model=EMBEDDINGS_MODEL)
@@ -47,7 +47,7 @@ class DocumentProcessor:
         documents = loader.load()
         
         # Enriquecer metadatos ( este es un documento entero, NO está chunkeado )
-        # no es obligatorio pero es lo mejor, siempre eriquecer los documentos con metadatos extra
+        # no es obligatorio pero es lo mejor ( siempre eriquecer los documentos con metadatos extra )
         for doc in documents:
             filename = Path(doc.metadata["source"]).stem
 
@@ -99,7 +99,7 @@ class DocumentProcessor:
         return chunks
     
     # 👀 el parámetro "documents" son los chunks
-    # aquí se crea la DB
+    # aquí se crea la DB            # 🔔🔔
     def create_vectorstore(self, documents: List[Document]) -> Chroma:
         """Crea el vectorstore con ChromaDB. Almacena c/chunk por separado"""
 
@@ -214,3 +214,18 @@ if __name__ == "__main__":
 
 
 # /home/arielox/dev/learning/SantiagoH/LangGraph/seccion6/helpdesk_system/setup_rag.py
+
+# 1. Navega al directorio del proyecto:
+
+# 1     cd
+#     /home/arielox/dev/learning/SantiagoH/LangGraph/seccion6/helpdesk_sy
+#     stem
+
+# 2. Activa el entorno virtual:
+
+# 1     source ../../venv/bin/activate
+
+# 3. Ejecuta el script:
+# 1     python setup_rag.py
+
+

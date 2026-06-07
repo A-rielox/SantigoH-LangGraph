@@ -1,3 +1,5 @@
+# MultiQueryRetriever
+
 ✦ El MultiQueryRetriever es una herramienta avanzada de LangChain diseñada para vencer las limitaciones de las búsquedas simples por palabras clave o similitud.
 
 Imagina que un usuario pregunta: "No puedo entrar a mi cuenta". Pero en tu manual técnico, la solución está escrita como: "Procedimiento de recuperación de credenciales". Una búsqueda normal podría fallar porque las palabras son muy distintas.
@@ -53,11 +55,6 @@ En resumen: Es un optimizador de preguntas que usa la inteligencia de GPT para a
 "
 ahora explicame, con este mismo detalle, tal vez un poco más de detalle, la  función "def buscar(self, ... "          
 ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
-
-Explicación de la función buscar: 
-Analizar y explicar en detalle la función `buscar` dentro de `rag_system.py`, desglosando su lógica paso a paso.
-
-✦ ¡Excelente! Vamos a desmenuzar la función buscar(self, consulta: str) -> Dict[str, Any] bloque por bloque.
 
 Esta función es el "corazón" de tu sistema. Es la puerta de entrada: recibe la pregunta del usuario (consulta), busca la información, le pide a la IA que redacte una respuesta y evalúa qué tan buena es esa respuesta.
 
