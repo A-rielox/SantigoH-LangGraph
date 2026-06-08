@@ -19,22 +19,27 @@ if "helpdesk" not in st.session_state:
 
 def verificar_rag_setup():
     """Verifica si el sistema RAG está configurado."""
+
     processor = DocumentProcessor()
     return processor.chroma_path.exists()
 
 def configurar_rag():
     """Configura el sistema RAG."""
+
     with st.spinner("🔧 Configurando sistema RAG..."):
         processor = DocumentProcessor()
         vectorstore = processor.setup_rag_system(force_rebuild=True)
+
         return vectorstore is not None
 
 def crear_ticket_id():
     """Genera un ID único para el ticket."""
+
     return f"TK-{uuid.uuid4().hex[:6].upper()}"
 
 def procesar_consulta(consulta: str, ticket_id: str):
     """Procesa una consulta nueva."""
+
     estado_inicial = HelpdeskState(
         consulta=consulta,
         categoria="",
@@ -50,13 +55,14 @@ def procesar_consulta(consulta: str, ticket_id: str):
     config = {"configurable": {"thread_id": ticket_id}}
     
     # Procesar con streaming
+    # Es p' obtener las actualizaciones que se hacen en c/nodo
     historial_procesamiento = []
     
     try:
         for chunk in st.session_state.helpdesk.stream(
             estado_inicial, 
             config=config, 
-            stream_mode="updates"
+            stream_mode="updates"  # values, messages, debug ....
         ):
             for nodo, salida in chunk.items():
                 if "historial" in salida and salida["historial"]:
@@ -99,12 +105,12 @@ def main():
         
         st.subheader("🔄 Flujo del Sistema")
         st.text("""
-1. 📝 Usuario envía consulta
-2. 🤖 Clasificación automática
-3. 🔍 Búsqueda vectorial RAG
-4. 📊 Evaluación de confianza
-5. 👨‍💼 Escalado si es necesario
-6. ✅ Respuesta final
+            1. 📝 Usuario envía consulta
+            2. 🤖 Clasificación automática
+            3. 🔍 Búsqueda vectorial RAG
+            4. 📊 Evaluación de confianza
+            5. 👨‍💼 Escalado si es necesario
+            6. ✅ Respuesta final
         """)
         
         st.subheader("⚙️ Configuración")
@@ -302,9 +308,9 @@ def main():
         # Calcular estadísticas
         total_tickets = len(st.session_state.tickets)
         resueltos_rag = sum(1 for t in st.session_state.tickets.values() 
-                           if t['resultado'].get('respuesta_final') and not t['resultado'].get('requiere_humano'))
+                            if t['resultado'].get('respuesta_final') and not t['resultado'].get('requiere_humano'))
         resueltos_humano = sum(1 for t in st.session_state.tickets.values() 
-                              if t['resultado'].get('respuesta_final') and t['resultado'].get('requiere_humano'))
+                            if t['resultado'].get('respuesta_final') and t['resultado'].get('requiere_humano'))
         pendientes = total_tickets - resueltos_rag - resueltos_humano
         
         col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
