@@ -3,7 +3,13 @@ from langchain_openai import ChatOpenAI
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.chat_history import InMemoryChatMessageHistory
 
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
+################################################################
+
+# llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+llm = ChatOpenAI(model="deepseek-chat", temperature=0)
 
 prompt = ChatPromptTemplate.from_messages([
     ("system", "Eres un asistente útil."),
@@ -13,11 +19,12 @@ prompt = ChatPromptTemplate.from_messages([
 
 chain = prompt | llm
 
-store = {}
+store = {} # va a tener el historial de sesiones
 
 def get_session_history(session_id):
     if session_id not in store:
-        store[session_id] = InMemoryChatMessageHistory()
+        store[session_id] = InMemoryChatMessageHistory() # si NO existe => lo creo
+
     return store[session_id]
 
 # Cadena con memoria automatica por sesion

@@ -4,7 +4,13 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import trim_messages
 
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
+# llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+llm = ChatOpenAI(model="deepseek-chat", temperature=0)
+
+###############################################################################
 
 class WindowedState(MessagesState):
     pass
@@ -19,14 +25,22 @@ trimmer = trim_messages(
     include_system=True
 )
 
+
+###############################################################################
+#                               NODOS
 def chatbot_node(state):
     """Nodo que procesa mensajes y genera respuestas."""
+
     trimmed_messages = trimmer.invoke(state["messages"])
     system_prompt = "Eres un asistente amigable que recuerda conversaciones previas."
     messages = [SystemMessage(content=system_prompt)] + trimmed_messages
     response = llm.invoke(messages)
+
     return {"messages": [response]}
 
+
+###############################################################################
+#                               GRAPH
 workflow.add_node("chatbot", chatbot_node)
 workflow.add_edge(START, "chatbot")
 
@@ -34,9 +48,13 @@ workflow.add_edge(START, "chatbot")
 memory = MemorySaver()
 app = workflow.compile(checkpointer=memory)
 
+
+###############################################################################
+# 
 def chat(message, thread_id="sesion_terminal"):
     config = {"configurable": {"thread_id": thread_id}}
     result = app.invoke({"messages": [HumanMessage(content=message)]}, config)
+    
     return result["messages"][-1].content
 
 if __name__ == "__main__":

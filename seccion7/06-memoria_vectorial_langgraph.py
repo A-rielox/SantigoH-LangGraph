@@ -6,10 +6,16 @@ import chromadb
 from langchain_chroma import Chroma
 import uuid
 
-CHROMDB_PATH = "C:\\Users\\santiago\\curso_langchain\\Tema 5\\chromadb"
+# CHROMDB_PATH = "C:\\Users\\santiago\\curso_langchain\\Tema 5\\chromadb"
+CHROMDB_PATH = "./chromadb"
 
-# Configuracion basica del llm
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+# llm = ChatOpenAI(model="deepseek-chat", temperature=0)
+
+###############################################################################
 
 # Configuracion de la base de datos vectorial (chromdb)
 vectorstore = Chroma(
@@ -21,8 +27,12 @@ vectorstore = Chroma(
 client = chromadb.PersistentClient(path=CHROMDB_PATH)
 collection = client.get_collection("memoria_chat")
 
+
+###############################################################################
+#                               NODOS
 def guardar_memoria(texto):
     """Guarda informacion relevante del usuario en la base de datos vectorial."""
+
     try:
         collection.add(
             documents=[texto],
@@ -76,6 +86,9 @@ def chatbot_node(state):
 
     return {"messages": [response]}
 
+
+###############################################################################
+#                               GRAPH
 # Crear el grafo
 workflow = StateGraph(state_schema=MessagesState)
 workflow.add_node("chatbot", chatbot_node)
@@ -85,6 +98,10 @@ workflow.add_edge(START, "chatbot")
 memory = MemorySaver()
 app = workflow.compile(checkpointer=memory)
 
+
+
+###############################################################################
+# 
 def chat(message, thread_id="sesion_terminal"):
     config = {"configurable": {"thread_id": thread_id}}
     result = app.invoke({"messages": HumanMessage(content=message)}, config)

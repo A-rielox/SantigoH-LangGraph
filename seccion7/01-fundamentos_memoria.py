@@ -1,14 +1,22 @@
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
 
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
+################################################################
+
+llm = ChatOpenAI(model="deepseek-chat", temperature=0)
 
 prompt = ChatPromptTemplate.from_messages([
     ("system", "Eres un asistente útil."),
+    MessagesPlaceholder(variable_name='history'),
     ("human", "{input}")
 ])
 
 chain = prompt | llm
+history = []
 
 print("Chat en terminal (escribe 'salir' para terminar)\n")
 
@@ -25,5 +33,14 @@ while True:
         print("Hasta luego!")
         break
 
-    respuesta = chain.invoke({"input": user_input})
+    respuesta = chain.invoke({ "history":history, "input": user_input })
     print("Asistente:", respuesta.content)
+    print("history: ", history)
+
+    # Actualizar el historial
+    history.extend([
+        HumanMessage( content=user_input ),
+        AIMessage( content=respuesta.content )
+    ])
+
+# python seccion7/01-fundamentos_memoria.py
