@@ -1,7 +1,8 @@
 import os
 
 # Configuracion de directorios
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# 👻 es la ruta base de la carpeta de dónde está este archivo
+BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # 👻
 DATA_DIR = os.path.join(BASE_DIR, "data")
 USERS_DIR = os.path.join(BASE_DIR, "users")
 

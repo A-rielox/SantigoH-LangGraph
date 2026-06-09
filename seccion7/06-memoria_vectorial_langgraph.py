@@ -5,9 +5,12 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 import chromadb
 from langchain_chroma import Chroma
 import uuid
+import os
 
 # CHROMDB_PATH = "C:\\Users\\santiago\\curso_langchain\\Tema 5\\chromadb"
-CHROMDB_PATH = "./chromadb"
+# CHROMDB_PATH = "./chromadb" 📢
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CHROMDB_PATH = os.path.join(BASE_DIR, "chromadb")
 
 from dotenv import load_dotenv
 load_dotenv(override=True)
@@ -16,14 +19,18 @@ llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 # llm = ChatOpenAI(model="deepseek-chat", temperature=0)
 
 ###############################################################################
+#                               V-DB
 
 # Configuracion de la base de datos vectorial (chromdb)
+
+# collection_name="memoria_chat" => p' crear distitos "apartados" ( equivalente a != DB's )
 vectorstore = Chroma(
     collection_name="memoria_chat",
     embedding_function=OpenAIEmbeddings(model="text-embedding-3-large"),
     persist_directory=CHROMDB_PATH
 )
 
+# 🍑 💨
 client = chromadb.PersistentClient(path=CHROMDB_PATH)
 collection = client.get_collection("memoria_chat")
 
@@ -38,23 +45,28 @@ def guardar_memoria(texto):
             documents=[texto],
             ids=[str(uuid.uuid4())]
         )
+
         print(f"[+] Guardado en memoria: {texto}")
     except Exception as e:
         print(f"Error guardando en memoria: {texto}:{e}")
 
+# podría aplicar cualquier tipo de retriever, este es solo el caso MÁS sencillo
 def buscar_memoria(consulta, k=3):
     """Busca informacion relevante en la memoria de chromadb."""
+
     try:
         results = collection.query(
             query_texts=[consulta],
             n_results=k
         )
+
         return results['documents'][0] if results['documents'] else []
     except:
         return []
     
 def chatbot_node(state):
     """Nodo principal del grafo."""
+
     messages = state['messages']
     ultimo_mensaje = messages[-1].content if messages else ""
 
@@ -75,6 +87,7 @@ def chatbot_node(state):
 
     # 4. Guardar informacion relevante del usuario en la memoria vectorial
     mensaje_lower = ultimo_mensaje.lower()
+
     if "me llamo" in mensaje_lower:
         guardar_memoria(f"El usuario se llama: {ultimo_mensaje}")
     elif any(frase in mensaje_lower for frase in ["trabajo en", "trabajo como", "soy programador", "soy doctor", "soy estudiante"]):
@@ -91,6 +104,7 @@ def chatbot_node(state):
 #                               GRAPH
 # Crear el grafo
 workflow = StateGraph(state_schema=MessagesState)
+
 workflow.add_node("chatbot", chatbot_node)
 workflow.add_edge(START, "chatbot")
 
@@ -99,24 +113,28 @@ memory = MemorySaver()
 app = workflow.compile(checkpointer=memory)
 
 
-
 ###############################################################################
 # 
 def chat(message, thread_id="sesion_terminal"):
     config = {"configurable": {"thread_id": thread_id}}
     result = app.invoke({"messages": HumanMessage(content=message)}, config)
+
     return result["messages"][-1].content
 
 def mostrar_memorias():
     """Funcion auxiliar para ver todas las memorias guardadas del usuario."""
+
     try:
         all_memories = collection.get()
+
         if all_memories['documents']:
             print("[+] Memorias guardadas:")
+
             for i, memoria in enumerate(all_memories['documents'], 1):
                 print(f"{i}. {memoria}")
         else:
             print("[-] No hay memorias guardads aun")
+
     except Exception as e:
         print(f"Error obteniendo memorias: {e}")
 
@@ -126,7 +144,7 @@ if __name__ == "__main__":
 
     while True:
         try:
-            user_input = input("Tú: ").strip()
+            user_input = input("\n\n Tú: ").strip()
         except (EOFError, KeyboardInterrupt):
             print("\nHasta luego!")
             break
@@ -142,5 +160,7 @@ if __name__ == "__main__":
             continue
 
         respuesta = chat(user_input, session_id)
-        print("Asistente:", respuesta)
+
+        print("\n\n Asistente:", respuesta)
         print()
+
