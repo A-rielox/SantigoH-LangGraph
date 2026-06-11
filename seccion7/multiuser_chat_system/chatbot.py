@@ -9,7 +9,9 @@ from config import DEFAULT_MODEL, DEFAULT_TEMPERATURE
 import os
 
 class ModernChatbot:
-
+    ###############################################################################
+    ###############################################################################
+    #                               __init__
     def __init__(self, user_id: str):
         self.user_id = user_id
         self.memory_manager = ModernMemoryManager(user_id)
@@ -23,16 +25,16 @@ class ModernChatbot:
         # Template del sistema con contexto dinamico
         self.system_template = """Eres un asistente personal inteligente y amigable.
 
-Características de tu personalidad:
-- Eres útil, empático y conversacional
-- Recuerdas información importante de conversaciones anteriores
-- Adaptas tu estilo a las preferencias del usuario
-- Eres proactivo ofreciendo sugerencias relevantes
-- Mantienes un tono profesional pero cercano
+            Características de tu personalidad:
+            - Eres útil, empático y conversacional
+            - Recuerdas información importante de conversaciones anteriores
+            - Adaptas tu estilo a las preferencias del usuario
+            - Eres proactivo ofreciendo sugerencias relevantes
+            - Mantienes un tono profesional pero cercano
 
-{context}
+            {context}
 
-Usa esta información para personalizar tus respuestas, pero no menciones explícitamente que tienes memoria a menos que sea relevante para la conversación."""
+            Usa esta información para personalizar tus respuestas, pero no menciones explícitamente que tienes memoria a menos que sea relevante para la conversación."""
 
         # Configurar el trimming de mensajes para gestion del contexto
         self.message_trimeer = trim_messages(
@@ -48,10 +50,18 @@ Usa esta información para personalizar tus respuestas, pero no menciones explí
 
     def _create_app(self):
         """Crea la aplicacion de LangGraph con estado extendido."""
-        workflow = StateGraph(state_schema=MemoryState)
 
+        # 🍑🍑 aquí se "define" el state q se va a ocupar, que es el que se define en el archivo memory_manager.py
+        workflow = StateGraph(state_schema=MemoryState) 
+        
+        ###############################################################################
+        ###############################################################################
+        #                               NODOS
+
+        # Busca en el último mensaje del usuario y consulta la memoria vectorial para recuperar recuerdos relevantes ( solo para el último mensaje) de conversaciones pasadas. Devuelve vector_memories con los resultados.
         def memory_retrieval_node(state):
             """Nodo que recupera memorias relevantes."""
+
             messages = state['messages']
 
             if not messages:
@@ -74,8 +84,11 @@ Usa esta información para personalizar tus respuestas, pero no menciones explí
 
             return {"vector_memories": relevant_memories}
         
+
+        # Aplica trim_messages a todo el historial de mensajes para recortar el contexto y no exceder el límite de tokens del LLM, manteniendo solo los mensajes más recientes y relevantes.
         def context_optimization_node(state):
             """Nodo que optimiza el contexto usando trim_messages."""
+
             messages = state['messages']
 
             # Aplicar trimming inteligente
@@ -83,8 +96,11 @@ Usa esta información para personalizar tus respuestas, pero no menciones explí
 
             return {"messages": trimmed_messages}
         
+
+        # 🤡 Construye un contexto enriquecido con las memorias vectoriales recuperadas ( las cosas relevantes del usuario q se guardan ), lo inyecta en el system prompt, y genera la respuesta del asistente usando el LLM.
         def response_generation_node(state):
             """Nodo que genera la respuesta usando el contexto optimizado."""
+
             messages = state['messages']
             vector_memories = state.get('vector_memories', [])
 
@@ -93,9 +109,11 @@ Usa esta información para personalizar tus respuestas, pero no menciones explí
             
             # Construir contexto con memorias vectoriales
             if vector_memories:
-                context_parts = ["Informacion relevante que recuerdas del usuario:"]
+                context_parts = ["Informacion relevante que recuerdas del usuario: "]
+
                 for memory in vector_memories:
                     context_parts.append(f"- {memory}")
+                
                 context = "\n".join(context_parts)
             else:
                 context = "No hay informacion previa relevante disponible."
@@ -111,9 +129,17 @@ Usa esta información para personalizar tus respuestas, pero no menciones explí
             response = chain.invoke({"messages": messages})
 
             return {"messages": response}
+            # Cada vez que el usuario envía un mensaje:
+            # Se recuperan las memorias vectoriales actuales (que pueden haberse enriquecido desde la última vez).
+            # Se formatea el system_template con ese contexto fresco.
+            # Se envía una sola llamada al LLM con: [SystemMessage(contexto actualizado), ...todo el historial recortado].
+            # El prompt no se reusa entre invocaciones; se reconstruye desde cero en cada ejecución del grafo.
 
+
+        # Extrae nueva información del último mensaje del usuario y la almacena como memorias vectoriales, evitando duplicados al comparar con last_memory_extraction.
         def memory_extraction_node(state):
             """Nodo que extrae y guarda nuevas memorias vectoriales."""
+
             messages = state['messages']
             last_extraction = state.get('last_memory_extraction')
 
@@ -134,6 +160,10 @@ Usa esta información para personalizar tus respuestas, pero no menciones explí
             
             return {}
         
+        
+        ###############################################################################
+        ###############################################################################
+        #                               GRAPH
         # Configurar el grafo con flujo secuencial
         workflow.add_node("memory_retrieval", memory_retrieval_node)
         workflow.add_node("context_optimization", context_optimization_node)
@@ -158,14 +188,22 @@ Usa esta información para personalizar tus respuestas, pero no menciones explí
 
         return workflow.compile(checkpointer=checkpointer)
     
+    
+    ###############################################################################
+    ###############################################################################
+    #                               APP
+
+    # ⭐️⭐️⭐️⭐️⭐️⭐️ Cuando en la "aplicación general" alguien mete "hola que tal" se ejecuta esta "chat()" y aquí es donde se invoca todo el grafo de langgraph, gracias al "config = ..." al pasarlo en "result = ..." es que se va pasando todo el resto de los mensajes y todo el show que está guardado en sqlite.
     def chat(self, message: str, chat_id: str = "default"):
         """Envia un mensaje y obtiene respuesta del chatbot."""
+
         try:
             # Configuracion para el thread especifico del chat
             config = {"configurable": {"thread_id": f"user_{self.user_id}_chat_{chat_id}"}}
 
             # Actualizamos el titulo del chat si es necesario
             chat_info = self.memory_manager.get_chat_info(chat_id)
+
             if chat_info["title"] == "Nuevo chat":
                 chat_title = self.memory_manager._generate_chat_title(message)
                 self.memory_manager.update_chat_metadata(chat_id, chat_title)
@@ -197,6 +235,7 @@ Usa esta información para personalizar tus respuestas, pero no menciones explí
         
     def get_conversation_history(self, chat_id: str = "default", limit: int = 50):
         """Obtiene el historial de conversacion usando el estado de LangGraph."""
+
         try:
             config = {"configurable": {"thread_id": f"user_{self.user_id}_chat_{chat_id}"}}
 
@@ -225,6 +264,7 @@ Usa esta información para personalizar tus respuestas, pero no menciones explí
         
     def clear_conversation(self, chat_id: str = "default") -> bool:
         """Limpia el historial de conversación"""
+
         try:
             config = {"configurable": {"thread_id": f"user_{self.user_id}_chat_{chat_id}"}}
             
@@ -238,6 +278,7 @@ Usa esta información para personalizar tus respuestas, pero no menciones explí
     
     def delete_chat_from_langgraph(self, chat_id: str) -> bool:
         """Elimina un chat específico de LangGraph"""
+
         try:
             thread_id = f"user_{self.user_id}_chat_{chat_id}"
             
@@ -254,7 +295,7 @@ Usa esta información para personalizar tus respuestas, pero no menciones explí
             
             # No hay una API pública para eliminar threads en LangGraph
             # Por ahora, simplemente reportamos éxito
-            # La eliminación real sería manejada por la base de datos
+            # La eliminación real sería manejada por la base de datos ( SI ES QUE LO QUIERO HACER, ESTO ES SOLO UNA TRAMPILLA )
             return False
             
         except Exception as e:
@@ -269,6 +310,7 @@ class ChatbotManager:
     @classmethod
     def get_chatbot(cls, user_id):
         """Obtiene o crea una instancia de chatbot para un usuario"""
+
         if user_id not in cls._instances:
             cls._instances[user_id] = ModernChatbot(user_id)
 
@@ -277,10 +319,12 @@ class ChatbotManager:
     @classmethod
     def remove_chatbot(cls, user_id):
         """Elimina una instancia de chatbot"""
+
         if user_id in cls._instances:
             del cls._instances[user_id]
 
     @classmethod
     def clear_all(cls):
         """Limpia toas las instancias de chatbot"""
+
         cls._instances.clear()

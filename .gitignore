@@ -5,5 +5,11 @@ __pycache__/
 token.json
 credentials.json
 
+users/
+soc_multiagent.zip
+multiuser_chat_system.zip
+
+
+
 # Vector Databases
 **/chroma_db/

@@ -43,15 +43,18 @@ bot recuerda de un chat a otro, como "mi perro se llama Toby").
     * persist_directory: Le dice a Chroma dónde guardar los
         archivos físicos para que no se pierdan al cerrar el
         programa.
+
 * chromadb.PersistentClient: Crea un cliente directo de
     ChromaDB. Se usa para operaciones más granulares que el
     envoltorio de LangChain a veces no permite de forma sencilla.
+
 * Gestión de Colecciones: 
     * Intenta obtener la colección del usuario con
         get_collection.
     * Si la colección no existe (lo cual lanza una excepción la
         primera vez), entra en el except y la crea con
         create_collection.
+
 * Seguridad: Todo está envuelto en un try-except. Si algo falla
     (por ejemplo, si no hay API Key de OpenAI), marca
     self.vectorstore = None para evitar que el programa explote
@@ -359,12 +362,14 @@ información en la base de datos vectorial.
 
 * Generación de Identidad: Crea un memory_id único usando
     uuid.uuid4() para que cada recuerdo sea rastreable.
+
 * Enriquecimiento de Metadatos: No solo guarda el texto, sino
     que añade automáticamente:
     * user_id: Para asegurar que la memoria pertenece al
         usuario actual.
     * timestamp: La fecha y hora exacta en que se guardó.
     * memory_id: El ID generado.
+
 * Almacenamiento: Utiliza self.collection.add() de ChromaDB. Al
     hacerlo, el sistema convierte el texto en un embedding (un
     vector numérico) que representa su significado semántico,
@@ -379,12 +384,86 @@ similares a una consulta específica.
     de buscar coincidencias exactas de palabras (como un buscador
     normal), busca vectores que estén "cerca" del vector de la
     consulta (query).
+
 * Parámetro k: Define cuántos resultados quieres traer (por
     defecto usa MAX_VECTOR_RESULTS de tu configuración).
 * Retorno: Devuelve una lista con los textos de los documentos
     encontrados. Es lo que permite que el chatbot diga: "Recuerdo
     que me mencionaste antes que..." al integrar estos resultados
     en el prompt.
+
+# 🗨️
+en la función "search_vector_memory" el método que usa para buscar información en la base de datos vectorial es self.collection.query? este es como un método que ya viene por default ? o de dónde sale ?, si quisiera imprementar retrievers más "avanzados" ¿ aquí sería el lugar para hacerlo ?, dame los detalles y explicaciones
+
+
+self.collection.query — origen y detalles
+
+¿De dónde sale?
+
+Viene de ChromaDB, la librería de base de datos vectorial. En _init_vector_db (memory_manager.py:66):
+
+self.client = chromadb.PersistentClient(path=self.chromadb_path)
+self.collection = self.client.get_collection(f"memoria_{self.user_id}")
+
+self.client es un cliente de ChromaDB; self.collection es un objeto chromadb.Collection. .query() es un método nativo de esa clase de ChromaDB, no es algo custom ni de LangChain. Es el método estándar para búsqueda semántica.
+
+¿Qué hace .query() internamente?
+results = self.collection.query(
+    query_texts=[query],   # texto a buscar
+    n_results=k            # cuántos resultados
+)
+
+1. Embedding automático: ChromaDB convierte query a un vector usando la función de embedding que se configuró al crear la collection (en este caso, como la collection se creó vía langchain_chroma.Chroma con OpenAIEmbeddings, ChromaDB internamente usa ese mismo embedder para generar el vector de la query).
+2. Búsqueda por similitud: Calcula cosine similarity entre el vector de la query y todos los vectores almacenados.
+3. Devuelve los top-k: Un diccionario con ids, documents, metadatas y distances.
+
+Respuesta cruda del .query()
+{
+    'ids': [['mem_001', 'mem_045']],
+    'documents': [['Texto recuperado 1', 'Texto recuperado 2']],
+    'metadatas': [[{...}, {...}]],
+    'distances': [[0.12, 0.34]]
+}
+
+La función lo simplifica a:
+return results['documents'][0]  # → ['Texto 1', 'Texto 2']
+El [0] es porque query_texts acepta múltiples queries a la vez, así que los resultados vienen anidados: results['documents'][i] corresponde a la i-ésima query.
+
+
+¿Es aquí donde implementar retrievers más avanzados?
+Sí, exactamente. search_vector_memory es el punto de extensión natural. Podrías reemplazar el .query() simple por estrategias como:
+
+Estrategia	Qué hace
+
+Hybrid search	Combina búsqueda vectorial + BM25/keyword. ChromaDB no lo soporta nativo, pero podrías usar self.collection.query() + un índice aparte y fusionar resultados.
+Re-ranking	Pedir más resultados (n_results=20) y luego usar un cross-encoder (ej. CohereRerank) para reordenar los top 3-5 más relevantes.
+Multi-query	Un LLM genera 3-4 variantes de la query original, ejecutás .query() para cada una, y combinás/deduplicás los resultados.
+Self-query	Un LLM extrae filtros de metadata (ej. category="profesional") de la query y los pasás al where parameter de .query().
+Multi-vector / Parent Document	Dividís documentos en chunks pequeños para el embedding pero recuperás el documento padre completo.
+
+
+Ejemplo concreto de cómo se vería un retriever con re-ranking en ese mismo lugar:
+def search_vector_memory(self, query, k=MAX_VECTOR_RESULTS, use_rerank=False):
+    if not self.collection:
+        return []
+
+    # pedir más candidatos de los que necesitamos
+    fetch_k = k * 3 if use_rerank else k
+    results = self.collection.query(query_texts=[query], n_results=fetch_k)
+    docs = results['documents'][0] if results['documents'] else []
+
+    if use_rerank and len(docs) > k:
+        # re-ranker externo (ej. Cohere, FlagEmbedding, etc.)
+        docs = self._rerank(query, docs, top_n=k)
+
+    return docs
+
+La idea es: en lugar de devolver los top-k por similitud pura, primero pedís más candidatos y luego aplicás un modelo más preciso (pero más costoso) para quedarte con los mejores.
+
+
+
+
+
 
 3. get_all_vector_memories()
 Es una función de utilidad administrativa (usada probablemente

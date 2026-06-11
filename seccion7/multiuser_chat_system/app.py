@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
 import streamlit as st
 from datetime import datetime
 from memory_manager import ModernMemoryManager, UserManager
@@ -20,6 +23,7 @@ st.set_page_config(
 
 def init_session_state():
     """Inicializa el estado de la sesión"""
+
     if 'current_user' not in st.session_state:
         st.session_state.current_user = None
     if 'current_chat' not in st.session_state:
@@ -33,8 +37,11 @@ def init_session_state():
     if 'show_memories' not in st.session_state:
         st.session_state.show_memories = False
 
+
+
 def user_selection_sidebar():
     """Sidebar para selección/creación de usuarios"""
+
     st.sidebar.header("👤 Usuario")
     
     # Obtener usuarios existentes
@@ -84,8 +91,11 @@ def user_selection_sidebar():
                 else:
                     st.error("Error creando usuario")
 
+
+
 def chat_history_sidebar():
     """Sidebar estilo ChatGPT con historial de chats"""
+
     if not st.session_state.current_user:
         return
     
@@ -157,8 +167,11 @@ def chat_history_sidebar():
     else:
         st.sidebar.info("No hay chats todavía.\nHaz clic en 'Nuevo Chat' para comenzar.")
 
+
+
 def main_chat_interface():
     """Interfaz principal de chat estilo ChatGPT"""
+
     if not st.session_state.current_user:
         st.title(PAGE_TITLE)
         st.info("👈 Selecciona o crea un usuario en la barra lateral para comenzar")
@@ -237,8 +250,11 @@ def main_chat_interface():
     if user_input:
         process_user_message(user_input)
 
+
+
 def process_user_message(user_input: str):
     """Procesa un mensaje del usuario"""
+
     # Mostrar mensaje del usuario inmediatamente
     with st.chat_message("user"):
         st.write(user_input)
@@ -273,8 +289,11 @@ def process_user_message(user_input: str):
     else:
         st.error(f"Error: {response['error']}")
 
+
+
 def show_memory_interface(container=st):
     """Interfaz moderna para mostrar memorias vectoriales"""
+
     container.subheader("🧠 Memoria Vectorial")
     if container.button("Cerrar", key="close_memories"):
         st.session_state.show_memories = False
@@ -349,8 +368,11 @@ def show_memory_interface(container=st):
             with col3:
                 st.caption(f"**Fecha:** {format_timestamp(timestamp)}")
 
+
+
 def main():
     """Función principal de la aplicación"""
+
     init_session_state()
     
     # Sidebar
@@ -378,5 +400,11 @@ def main():
     else:
         main_chat_interface()
 
+
+
+
 if __name__ == "__main__":
     main()
+
+
+# seccion7/multiuser_chat_system streamlit run app.py

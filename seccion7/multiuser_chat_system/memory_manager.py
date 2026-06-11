@@ -288,6 +288,7 @@ class ModernMemoryManager:
     ###############################################################################
     ###############################################################################
     #                               MEMORIA VECTORIAL
+    #   ---> son las memorias de lo importante que va diciendo que la IA cree que se debe recordar
     def save_vector_memory(self, text: str, metadata: Optional[Dict] = None):
         """Guarda informacion en la memoria vectorial."""
 
@@ -296,6 +297,7 @@ class ModernMemoryManager:
         
         try:
             memory_id = str(uuid.uuid4())
+
             doc_metadata = metadata or {}
             doc_metadata.update({
                 "user_id": self.user_id,
@@ -322,7 +324,7 @@ class ModernMemoryManager:
             return []
         
         try:
-            results = self.collection.query(
+            results = self.collection.query( # 🗨️ se puede implementar acá los retrievers que se quiera
                 query_texts=[query],
                 n_results=k
             )
@@ -363,9 +365,12 @@ class ModernMemoryManager:
     ###############################################################################
     ###############################################################################
     #                               EXTRACCION INTELIGENTE 
+
+    # lo de "extracción", es extracción de lo importante del mensaje q manda el usuario
     def extract_and_store_memories(self, user_message: str):
         """Extrae y almacena memorias usando LLM"""
 
+        #  ⭐️ "self.extraction_chain" es el que se define en _init_extraction_system
         if not self.extraction_chain:
             return self._extract_memories_manual(user_message)
         
@@ -374,6 +379,7 @@ class ModernMemoryManager:
                 "user_message": user_message
             })
 
+            # si hay algo importante => lo guarda en la VDB
             if extracted_memory.category != "none" and extracted_memory.importance >= 2:
                 memory_id = self.save_vector_memory(
                     extracted_memory.content,
@@ -384,6 +390,7 @@ class ModernMemoryManager:
                     }
                 )
                 return bool(memory_id)
+            
             return False
         
         except Exception as e:
@@ -408,7 +415,7 @@ class ModernMemoryManager:
                 return bool(memory_id)
         
         return False
-    
+
 
 
 
@@ -421,12 +428,14 @@ class UserManager:
     @staticmethod
     def get_users():
         """Obtiene un listado de usuarios existentes."""
+
         if not os.path.exists(USERS_DIR):
             return []
         
         users = []
         for item in os.listdir(USERS_DIR):
             user_path = os.path.join(USERS_DIR, item)
+            
             if os.path.isdir(user_path):
                 users.append(item)
 
@@ -435,12 +444,14 @@ class UserManager:
     @staticmethod
     def user_exists(user_id):
         """Verifica si un usuario existe."""
+
         user_path = os.path.join(USERS_DIR, user_id)
         return os.path.exists(user_path)
     
     @staticmethod
     def create_user(user_id):
         """Crea un nuevo usuario"""
+
         try:
             user_path = os.path.join(USERS_DIR, user_id)
             os.makedirs(user_path, exist_ok=True)
