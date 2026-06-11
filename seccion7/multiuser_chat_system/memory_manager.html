@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ModernMemoryManager: Deep Architecture & Interactions</title>
+    <!-- Mermaid.js -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <!-- D3.js for Pan & Zoom -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --header-bg: #161b22;
+            --tooltip-bg: #000000;
+            --tooltip-text: #e6edf3;
+            --accent-color: #238636;
+            --code-text: #79c0ff;
+            --bold-text: #ffa657;
+            --border-color: #30363d;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--tooltip-text);
+        }
+
+        #app-container {
+            display: flex;
+            flex-direction: column;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #header {
+            padding: 16px 24px;
+            background: var(--header-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        #controls {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 6px 12px;
+            background-color: #21262d;
+            color: #c9d1d9;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 13px;
+            transition: 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #30363d;
+            border-color: #8b949e;
+        }
+
+        #graph-container {
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+            background-color: var(--bg-color);
+            overflow: hidden;
+        }
+
+        #graph-container:active {
+            cursor: grabbing;
+        }
+
+        #tooltip {
+            position: fixed;
+            background-color: var(--tooltip-bg);
+            color: var(--tooltip-text);
+            padding: 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.6;
+            max-width: 650px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+            z-index: 9999;
+            white-space: pre-wrap;
+            border: 1px solid var(--border-color);
+        }
+
+        #tooltip.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #tooltip h3 {
+            margin: 0 0 16px 0;
+            border-bottom: 1px solid var(--accent-color);
+            padding-bottom: 8px;
+            color: #58a6ff;
+            font-size: 1.3rem;
+        }
+
+        #tooltip code {
+            background-color: #1b1f23;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Fira Code', monospace;
+            color: var(--code-text);
+        }
+
+        #tooltip b {
+            color: var(--bold-text);
+        }
+
+        #tooltip pre {
+            background-color: #161b22;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 16px 0;
+            font-family: 'Fira Code', monospace;
+            font-size: 13px;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Mermaid Node Overrides */
+        .node rect, .node circle, .node polygon {
+            fill: #161b22 !important;
+            stroke: #30363d !important;
+        }
+        .node text {
+            fill: #c9d1d9 !important;
+        }
+        .edgePath path {
+            stroke: #8b949e !important;
+        }
+        .edgeLabel {
+            background-color: #0d1117 !important;
+            color: #c9d1d9 !important;
+        }
+        .node:hover rect, .node:hover circle, .node:hover polygon {
+            stroke: #58a6ff !important;
+            stroke-width: 2px !important;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <div id="header">
+        <h1>ModernMemoryManager: Functional Analysis (memory_manager.py)</h1>
+        <div id="controls">
+            <button class="btn" id="btn-increase-text">Aumentar Fuente</button>
+            <button class="btn" id="btn-decrease-text">Disminuir Fuente</button>
+            <button class="btn" id="btn-reset">Reset View</button>
+        </div>
+    </div>
+    <div id="graph-container"></div>
+    <div id="tooltip"></div>
+</div>
+
+<script>
+    const container = document.getElementById('graph-container');
+    const tooltipEl = document.getElementById('tooltip');
+
+    // PILAR 1: DICCIONARIO DE DATOS (Interacciones de memory_manager.py)
+    const nodeData = {
+        "INIT": {
+            title: "__init__ (Constructor de Memoria)",
+            content: "<b>Qué pasa en el código:</b>\nConfigura el aislamiento por usuario y orquesta la inicialización de los subsistemas.\n\n<b>Lógica literal:</b>\n<pre>self.user_dir = os.path.join(USERS_DIR, user_id)\nself._init_vector_db()      # ChromaDB\nself._init_extraction_system() # LLM Extraction</pre>\n\n<b>Persistencia:</b>\nDefine las rutas físicas para <code>chromadb</code> y <code>langgraph_memory.db</code> en el directorio raíz del usuario."
+        },
+        "JSON_META": {
+            title: "Capa de Metadatos JSON (chats_meta.json)",
+            content: "<b>Qué pasa en el código:</b>\nGestiona la persistencia ligera de las sesiones de chat.\n\n<b>Funciones Clave:</b>\n- <code>get_user_chats()</code>: Carga y ordena por <code>updated_at</code>.\n- <code>_save_chats_metadata()</code>: Sincroniza el estado actual a disco.\n- <code>update_chat_metadata()</code>: Actualiza el título y el <code>message_count</code>.\n\n<b>Interacción:</b>\nPermite listar chats rápidamente sin necesidad de consultar bases de datos pesadas."
+        },
+        "TITLE_GEN": {
+            title: "_generate_chat_title (LLM Title Engine)",
+            content: "<b>Qué pasa en el código:</b>\nGenera un título descriptivo basado en el primer mensaje de la conversación.\n\n<b>Cadena de Ejecución:</b>\n<pre>title_chain = title_prompt | self.extraction_llm\nresponse = title_chain.invoke({\"message\": first_message[:200]})</pre>\n\n<b>Restricciones:</b>\n- Máximo 4-5 palabras.\n- Limpieza de comillas y caracteres especiales.\n- Truncamiento a 50 caracteres si excede el límite."
+        },
+        "EXTRACT_CHAIN": {
+            title: "extract_and_store_memories (LLM Chain)",
+            content: "<b>Qué pasa en el código:</b>\nAnaliza semánticamente los mensajes del usuario para extraer memorias transversales.\n\n<b>Definición de Cadena:</b>\n<pre>self.extraction_chain = self.extraction_template | \\\n                       self.extraction_llm | \\\n                       self.memory_parser</pre>\n\n<b>Salida Estructurada (ExtractedMemory):</b>\nCategorías: <code>personal</code>, <code>profesional</code>, <code>preferencias</code>, <code>hechos_importantes</code>.\n\n<b>Condición de Guardado:</b>\nSolo persiste si <code>importance >= 2</code> y la categoría no es <code>none</code>."
+        },
+        "MANUAL_EXT": {
+            title: "_extract_memories_manual (Fallback System)",
+            content: "<b>Qué pasa en el código:</b>\nSistema de extracción basado en reglas (keyword-based) si el LLM no está disponible.\n\n<b>Reglas de coincidencia:</b>\n- <i>Personal:</i> 'me llamo', 'mi nombre es'.\n- <i>Profesional:</i> 'trabajo en', 'mi profesión'.\n- <i>Preferencias:</i> 'me gusta', 'odio'.\n- <i>Importante:</i> 'recuerda que', 'no olvides'.\n\n<b>Retorno:</b>\nBoolean que indica si se guardó algo en la memoria vectorial."
+        },
+        "CHROMA_DB": {
+            title: "ChromaDB (Operaciones Vectoriales)",
+            content: "<b>Qué pasa en el código:</b>\nGestiona el almacenamiento y recuperación semántica de largo plazo.\n\n<b>Métodos Críticos:</b>\n- <code>save_vector_memory(text, metadata)</code>: Genera UUID y añade a la colección.\n- <code>search_vector_memory(query, k)</code>: Busca los <code>k</code> documentos más cercanos.\n- <code>get_all_vector_memories()</code>: Recupera el set completo de memorias para visualización.\n\n<b>Embeddings:</b>\nUtiliza <code>text-embedding-3-large</code> para máxima precisión semántica."
+        },
+        "MODELS": {
+            title: "Modelos de Datos y Estado",
+            content: "<b>Interacciones de Tipos:</b>\n\n<b>1. MemoryState (TypedDict):</b>\nCombina <code>messages</code> (LangGraph) con <code>vector_memories</code> (ChromaDB IDs).\n\n<b>2. ExtractedMemory (Pydantic):</b>\nDefine el esquema de validación para la extracción inteligente:\n<pre>class ExtractedMemory(BaseModel):\n    category: str\n    content: str\n    importance: int</pre>"
+        }
+    };
+
+    // PILAR 2: CÓDIGO MERMAID (Fiel a memory_manager.py)
+    const mermaidSource = `
+graph TD
+    INIT[ModernMemoryManager.__init__] -->|Configura Rutas| JSON_META[chats_meta.json Management]
+    INIT -->|Carga Embeddings| CHROMA_DB[ChromaDB Vector Ops]
+    INIT -->|Instancia LLM| EXTRACT_CHAIN[extract_and_store_memories]
+
+    MSG((Mensaje Usuario)) -->|Primero del Chat| TITLE_GEN[_generate_chat_title]
+    TITLE_GEN -->|Actualiza Título| JSON_META
+
+    MSG -->|Análisis Semántico| EXTRACT_CHAIN
+    EXTRACT_CHAIN -->|Si LLM Falla| MANUAL_EXT[_extract_memories_manual]
+    
+    EXTRACT_CHAIN -->|Si importance >= 2| CHROMA_DB
+    MANUAL_EXT -->|Keyword Match| CHROMA_DB
+
+    SEARCH[search_vector_memory] -->|Query Semántica| CHROMA_DB
+    CHROMA_DB -->|Contexto| MODELS[MemoryState: Integración de Datos]
+
+    classDef method fill:#161b22,stroke:#30363d,stroke-width:1px;
+    classDef io fill:#161b22,stroke:#58a6ff,stroke-width:2px;
+    class INIT,JSON_META,TITLE_GEN,EXTRACT_CHAIN,MANUAL_EXT,CHROMA_DB,MODELS method;
+    class MSG,SEARCH io;
+    `;
+
+    let currentFontSize = 14;
+    let zoomBehavior;
+    let svgGroup;
+    let currentTransform = null;
+    let hideTimeout;
+
+    const mermaidConfig = {
+        startOnLoad: false,
+        securityLevel: 'strict',
+        theme: 'dark',
+        themeVariables: {
+            fontSize: '14px',
+            fontFamily: 'Segoe UI'
+        },
+        flowchart: { useMaxWidth: false, htmlLabels: true, curve: 'basis' }
+    };
+
+    async function renderGraph() {
+        const oldSvg = container.querySelector("svg");
+        if (oldSvg) currentTransform = d3.zoomTransform(oldSvg);
+
+        container.innerHTML = '';
+        const renderId = "mermaid-svg-" + Date.now();
+        
+        mermaid.initialize({
+            ...mermaidConfig,
+            themeVariables: { ...mermaidConfig.themeVariables, fontSize: currentFontSize + 'px' }
+        });
+
+        const { svg } = await mermaid.render(renderId, mermaidSource);
+        container.insertAdjacentHTML('beforeend', svg);
+        
+        const svgElement = container.querySelector('svg');
+        svgElement.removeAttribute('width');
+        svgElement.removeAttribute('height');
+        svgElement.style.width = '100%';
+        svgElement.style.height = '100%';
+
+        setTimeout(() => {
+            initZoom(svgElement);
+            attachInteractivity();
+        }, 50);
+    }
+
+    function initZoom(svgElement) {
+        const d3Svg = d3.select(svgElement);
+        svgGroup = d3Svg.select('g');
+        
+        zoomBehavior = d3.zoom()
+            .scaleExtent([0.1, 10])
+            .on('zoom', (event) => svgGroup.attr('transform', event.transform));
+
+        d3Svg.call(zoomBehavior);
+        
+        if (currentTransform) {
+            d3Svg.call(zoomBehavior.transform, currentTransform);
+        } else {
+            const viewBox = svgElement.viewBox.baseVal;
+            const width = viewBox.width || 800;
+            const height = viewBox.height || 600;
+            const fullWidth = container.clientWidth;
+            const fullHeight = container.clientHeight;
+            
+            const initialScale = Math.min(fullWidth / width, fullHeight / height) * 0.8;
+            const transform = d3.zoomIdentity
+                .translate(fullWidth / 2 - initialScale * (viewBox.x + width / 2), fullHeight / 2 - initialScale * (viewBox.y + height / 2))
+                .scale(initialScale);
+            d3Svg.call(zoomBehavior.transform, transform);
+        }
+    }
+
+    function attachInteractivity() {
+        container.onmouseover = (e) => {
+            const node = e.target.closest('.node');
+            if (node) {
+                clearTimeout(hideTimeout);
+                const id = getCleanId(node.id);
+                if (id && nodeData[id]) showTooltip(node, nodeData[id]);
+            }
+        };
+
+        container.onmouseout = (e) => {
+            if (e.target.closest('.node')) {
+                hideTimeout = setTimeout(() => {
+                    tooltipEl.classList.remove('visible');
+                }, 300); 
+            }
+        };
+
+        tooltipEl.onmouseenter = () => clearTimeout(hideTimeout);
+        tooltipEl.onmouseleave = () => tooltipEl.classList.remove('visible');
+        
+        container.onclick = (e) => {
+            const node = e.target.closest('.node');
+            if (node) {
+                const id = getCleanId(node.id);
+                if (id && nodeData[id]) showTooltip(node, nodeData[id]);
+            }
+        };
+    }
+
+    function getCleanId(nodeId) {
+        const match = nodeId.match(/flowchart-(.*?)-[0-9]+/);
+        let id = match ? match[1] : nodeId;
+        
+        // Mapeo manual para IDs descriptivos
+        if (id.includes('INIT')) return 'INIT';
+        if (id.includes('JSON_META')) return 'JSON_META';
+        if (id.includes('TITLE_GEN')) return 'TITLE_GEN';
+        if (id.includes('EXTRACT_CHAIN')) return 'EXTRACT_CHAIN';
+        if (id.includes('MANUAL_EXT')) return 'MANUAL_EXT';
+        if (id.includes('CHROMA_DB')) return 'CHROMA_DB';
+        if (id.includes('MODELS')) return 'MODELS';
+        
+        return Object.keys(nodeData).find(key => nodeId.includes(key)) || id;
+    }
+
+    function showTooltip(nodeElement, data) {
+        tooltipEl.innerHTML = `<h3>${data.title}</h3><div>${data.content}</div>`;
+        tooltipEl.classList.add('visible');
+
+        const rect = nodeElement.getBoundingClientRect();
+        const tooltipRect = tooltipEl.getBoundingClientRect();
+        
+        let top = rect.bottom + 15;
+        let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+
+        if (left + tooltipRect.width > window.innerWidth - 20) {
+            left = window.innerWidth - tooltipRect.width - 20;
+        }
+        if (left < 20) left = 20;
+
+        if (top + tooltipRect.height > window.innerHeight - 20) {
+            top = rect.top - tooltipRect.height - 15;
+        }
+        if (top < 20) top = 20;
+
+        tooltipEl.style.top = top + 'px';
+        tooltipEl.style.left = left + 'px';
+    }
+
+    document.getElementById('btn-increase-text').onclick = () => {
+        currentFontSize += 2;
+        renderGraph();
+    };
+    
+    document.getElementById('btn-decrease-text').onclick = () => {
+        if (currentFontSize > 8) {
+            currentFontSize -= 2;
+            renderGraph();
+        }
+    };
+    
+    document.getElementById('btn-reset').onclick = () => {
+        currentTransform = null;
+        renderGraph();
+    };
+
+    window.onload = renderGraph;
+    window.onresize = () => renderGraph();
+</script>
+</body>
+</html>

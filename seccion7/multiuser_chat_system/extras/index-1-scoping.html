@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LangGraph: Scoping Phase - Flowchart Interactivo (v2.0 Fixed)</title>
+    <!-- Mermaid.js -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <!-- D3.js for Pan & Zoom -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --tooltip-bg: #111111;
+            --tooltip-text: #ffffff;
+            --accent-color: #007bff;
+            --code-text: #00ffff;
+            --bold-text: #ffcc00;
+            --header-bg: #ffffff;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+        }
+
+        #app-container {
+            display: flex;
+            flex-direction: column;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #header {
+            padding: 12px 24px;
+            background: var(--header-bg);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: #1a1a1a;
+            font-weight: 700;
+        }
+
+        #controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 14px;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,123,255,0.2);
+        }
+
+        .btn:hover {
+            background-color: #0056b3;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,123,255,0.3);
+        }
+
+        #graph-container {
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+            background-color: white;
+            overflow: hidden;
+        }
+
+        #graph-container:active {
+            cursor: grabbing;
+        }
+
+        /* Tooltip Styles (Pilar 3) */
+        #tooltip {
+            position: fixed;
+            background-color: var(--tooltip-bg);
+            color: var(--tooltip-text);
+            padding: 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.6;
+            max-width: 550px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 9999;
+            white-space: pre-wrap;
+            border: 1px solid #444;
+        }
+
+        #tooltip.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #tooltip h3 {
+            margin: 0 0 15px 0;
+            border-bottom: 2px solid #00ffff;
+            padding-bottom: 10px;
+            color: #4dabff;
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        #tooltip code {
+            background-color: #222;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            color: var(--code-text);
+            font-weight: 600;
+        }
+
+        #tooltip b {
+            color: var(--bold-text);
+        }
+
+        #tooltip pre {
+            background-color: #000;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 13px;
+            border: 1px solid #333;
+            color: #d1d1d1;
+        }
+
+        .node:hover rect, .node:hover circle, .node:hover polygon {
+            filter: drop-shadow(0 0 8px rgba(0,123,255,0.6));
+            stroke-width: 3px !important;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <div id="header">
+        <h1>LangGraph Architecture: Research Scoping Phase</h1>
+        <div id="controls">
+            <button class="btn" id="btn-increase-text">Aumentar Texto</button>
+            <button class="btn" id="btn-decrease-text">Disminuir Texto</button>
+            <button class="btn" id="btn-reset">Reset Zoom</button>
+        </div>
+    </div>
+    <div id="graph-container"></div>
+    <div id="tooltip"></div>
+</div>
+
+<script>
+    // ELEMENTOS GLOBALES (Fix: ReferenceError)
+    const container = document.getElementById('graph-container');
+    const tooltipEl = document.getElementById('tooltip');
+
+    // PILAR 1: DICCIONARIO DE DATOS (Nivel de Detalle Extremo)
+    const nodeData = {
+        "START": {
+            title: "ENTRY POINT: START (Inicio)",
+            content: "<b>Qué pasa en el código:</b>\nEl flujo inicia mediante la llamada <code>scope.invoke({\"messages\": [HumanMessage(...)]})</code>. Se inyecta la petición inicial del usuario en el estado.\n\n<b>Estado (State):</b>\nSe inicializa <code>AgentState</code>. La variable <code>messages</code> recibe la lista de entrada. <code>research_brief</code> se inicializa como <code>None</code>.\n\n<b>Contexto:</b> Este es el punto de entrada al grafo de Scoping."
+        },
+        "clarify": {
+            title: "NODE: clarify_with_user (Filtro de Ambigüedad)",
+            content: "<b>Qué pasa en el código:</b>\nEsta función evalúa si la conversación tiene suficiente contexto para generar un brief de investigación sin ambigüedades.\n\n<b>Lógica literal:</b>\n<pre>structured_output_model = model.with_structured_output(\n    ClarifyWithUser, \n    method=\"function_calling\"\n)\nresponse = structured_output_model.invoke([\n    HumanMessage(content=clarify_with_user_instructions.format(\n        messages=get_buffer_string(state[\"messages\"]),\n        date=get_today_str()\n    ))\n])</pre>\n\n<b>Estado (State):</b>\nSe actualiza la llave <code>messages</code>. Dependiendo de la decisión del LLM:\n- Si <code>need_clarification</code> es <code>True</code>: Se añade un <code>AIMessage</code> con la pregunta.\n- Si es <code>False</code>: Se añade un <code>AIMessage</code> con el mensaje de verificación.\n\n<b>Control de Flujo (Command):</b>\nRetorna un objeto <code>Command</code> dinámico:\n- <code>goto=END</code> (si requiere aclaración)\n- <code>goto=\"write_research_brief\"</code> (si está listo)"
+        },
+        "check": {
+            title: "DECISION: ¿Requiere Clarificación?",
+            content: "<b>Lógica de Enrutamiento:</b>\nEste no es un nodo de función simple, sino la representación visual del <code>Command</code> retornado por <code>clarify_with_user</code>.\n\n<b>Criterios:</b>\n- <b>SI:</b> El LLM detecta términos vagos, acrónimos desconocidos o falta de límites. El flujo termina (<code>END</code>) para que el usuario responda.\n- <b>NO:</b> El LLM tiene todo lo necesario (Quién, Para qué, Límites, Fuentes). El flujo avanza a <code>write_research_brief</code>."
+        },
+        "write": {
+            title: "NODE: write_research_brief (Destilación Técnica)",
+            content: "<b>Qué pasa en el código:</b>\nTransforma el historial de chat acumulado en un documento estructurado de directivas de investigación.\n\n<b>Lógica literal:</b>\n<pre>structured_output_model = model.with_structured_output(\n    ResearchQuestion, \n    method=\"function_calling\"\n)\nresponse = structured_output_model.invoke([\n    HumanMessage(content=transform_messages_into_research_topic_prompt.format(\n        messages=get_buffer_string(state.get(\"messages\", [])),\n        date=get_today_str()\n    ))\n])</pre>\n\n<b>Evolución del Estado:</b>\n- <code>research_brief</code>: Se sobreescribe con el string estructurado del LLM.\n- <code>supervisor_messages</code>: Se añade un <code>HumanMessage</code> que servirá de entrada para el <b>Multi-Agent Supervisor</b>.\n\n<b>Retorno:</b>\nRetorna un diccionario de actualización: <code>{\"research_brief\": ..., \"supervisor_messages\": ...}</code>."
+        },
+        "END": {
+            title: "EXIT POINT: END (Salida/Pausa)",
+            content: "<b>Qué pasa:</b>\nEl flujo de trabajo se detiene y devuelve el control al sistema.\n\n<b>Escenarios:</b>\n1. <b>Pausa Humana:</b> Si el flujo llegó aquí desde la decisión de clarificación, el sistema espera la respuesta del usuario.\n2. <b>Fase Completa:</b> Si llegó desde la escritura del brief, la fase de Scoping ha concluido y el sistema está listo para la ejecución multi-agente."
+        }
+    };
+
+    // PILAR 2: CÓDIGO MERMAID (Con Edges Descriptivos)
+    const mermaidSource = `
+graph TD
+    START((START)):::start_end -->|"Input: User Query"| clarify[clarify_with_user]
+    
+    clarify --> check{¿Info Suficiente?}:::decision
+    
+    check -->|"| need_clarification == True | <br> Update: messages (Question)"| END((END)):::start_end
+    
+    check -->|"| need_clarification == False | <br> Update: messages (Verify)"| write[write_research_brief]
+    
+    write -->|"Update: research_brief <br> Update: supervisor_messages"| END
+    
+    classDef start_end fill:#ffffff,stroke:#000,stroke-width:2px;
+    classDef node_logic fill:#ffffff,stroke:#000,stroke-width:1px;
+    classDef decision fill:#ffffff,stroke:#000,stroke-width:2px;
+    `;
+
+    // VARIABLES DE ESTADO DEL ZOOM
+    let currentFontSize = 16;
+    let zoomBehavior;
+    let svgGroup;
+    let currentTransform = null;
+    let hideTimeout;
+
+    const mermaidConfig = {
+        startOnLoad: false,
+        securityLevel: 'strict',
+        theme: 'base',
+        themeVariables: {
+            primaryColor: '#ffffff',
+            primaryTextColor: '#000000',
+            primaryBorderColor: '#000000',
+            lineColor: '#000000',
+            secondaryColor: '#ffffff',
+            tertiaryColor: '#ffffff',
+            nodeBorder: '#000000',
+            mainBkg: '#ffffff',
+            nodeTextColor: '#000000',
+            edgeLabelBackground: '#ffffff'
+        },
+        flowchart: { useMaxWidth: false, htmlLabels: true, curve: 'basis' }
+    };
+
+    async function renderGraph() {
+        // Guardar estado del zoom antes de re-renderizar
+        const oldSvg = container.querySelector("svg");
+        if (oldSvg) currentTransform = d3.zoomTransform(oldSvg);
+
+        container.innerHTML = '';
+        const renderId = "mermaid-svg-" + Date.now();
+        
+        mermaid.initialize({
+            ...mermaidConfig,
+            themeVariables: { ...mermaidConfig.themeVariables, fontSize: currentFontSize + 'px' }
+        });
+
+        const { svg } = await mermaid.render(renderId, mermaidSource);
+        container.insertAdjacentHTML('beforeend', svg);
+        
+        const svgElement = container.querySelector('svg');
+        svgElement.removeAttribute('width');
+        svgElement.removeAttribute('height');
+        svgElement.style.width = '100%';
+        svgElement.style.height = '100%';
+
+        setTimeout(() => {
+            initZoom(svgElement);
+            attachInteractivity();
+        }, 50);
+    }
+
+    function initZoom(svgElement) {
+        const d3Svg = d3.select(svgElement);
+        svgGroup = d3Svg.select('g');
+        
+        zoomBehavior = d3.zoom()
+            .scaleExtent([0.1, 10])
+            .on('zoom', (event) => svgGroup.attr('transform', event.transform));
+
+        d3Svg.call(zoomBehavior);
+        
+        if (currentTransform) {
+            d3Svg.call(zoomBehavior.transform, currentTransform);
+        } else {
+            // Pilar 4: Lectura de viewBox inyectada por Mermaid
+            const viewBox = svgElement.viewBox.baseVal;
+            const width = viewBox.width || 800;
+            const height = viewBox.height || 600;
+            const fullWidth = container.clientWidth;
+            const fullHeight = container.clientHeight;
+            
+            const initialScale = Math.min(fullWidth / width, fullHeight / height) * 0.8;
+            const transform = d3.zoomIdentity
+                .translate(fullWidth / 2 - initialScale * (viewBox.x + width / 2), fullHeight / 2 - initialScale * (viewBox.y + height / 2))
+                .scale(initialScale);
+            d3Svg.call(zoomBehavior.transform, transform);
+        }
+    }
+
+    function attachInteractivity() {
+        // Delegation sobre container (Pilar 5.2)
+        container.onmouseover = (e) => {
+            const node = e.target.closest('.node');
+            if (node) {
+                clearTimeout(hideTimeout);
+                const id = getCleanId(node.id);
+                if (id && nodeData[id]) showTooltip(node, nodeData[id]);
+            }
+        };
+
+        container.onmouseout = (e) => {
+            if (e.target.closest('.node')) {
+                hideTimeout = setTimeout(() => {
+                    tooltipEl.classList.remove('visible');
+                }, 400); 
+            }
+        };
+
+        tooltipEl.onmouseenter = () => clearTimeout(hideTimeout);
+        tooltipEl.onmouseleave = () => tooltipEl.classList.remove('visible');
+        
+        // Click para fijar tooltip en móviles o para persistencia
+        container.onclick = (e) => {
+            const node = e.target.closest('.node');
+            if (node) {
+                const id = getCleanId(node.id);
+                if (id && nodeData[id]) showTooltip(node, nodeData[id]);
+            }
+        };
+    }
+
+    function getCleanId(nodeId) {
+        // Regex infalible para IDs de Mermaid (Pilar 5.2)
+        const match = nodeId.match(/flowchart-(.*?)-[0-9]+/);
+        let id = match ? match[1] : nodeId;
+        
+        // Mapeo exhaustivo
+        if (id.includes('START')) return 'START';
+        if (id.includes('clarify')) return 'clarify';
+        if (id.includes('check')) return 'check';
+        if (id.includes('write')) return 'write';
+        if (id.includes('END')) return 'END';
+        
+        // Intento por llaves si falla el regex
+        return Object.keys(nodeData).find(key => nodeId.includes(key)) || id;
+    }
+
+    function showTooltip(nodeElement, data) {
+        tooltipEl.innerHTML = `<h3>${data.title}</h3><div>${data.content}</div>`;
+        tooltipEl.classList.add('visible');
+
+        const rect = nodeElement.getBoundingClientRect();
+        const tooltipRect = tooltipEl.getBoundingClientRect();
+        
+        // Pilar 5.3: Algoritmo Cuadrante-Consciente
+        let top = rect.bottom + 15;
+        let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+
+        // Ajuste Horizontal
+        if (left + tooltipRect.width > window.innerWidth - 20) {
+            left = window.innerWidth - tooltipRect.width - 20;
+        }
+        if (left < 20) left = 20;
+
+        // Ajuste Vertical (si se sale por abajo, mostrar arriba)
+        if (top + tooltipRect.height > window.innerHeight - 20) {
+            top = rect.top - tooltipRect.height - 15;
+        }
+        if (top < 20) top = 20;
+
+        tooltipEl.style.top = top + 'px';
+        tooltipEl.style.left = left + 'px';
+    }
+
+    // CONTROLES (Fix: Funcionamiento de botones)
+    document.getElementById('btn-increase-text').onclick = () => {
+        currentFontSize += 2;
+        renderGraph();
+    };
+    
+    document.getElementById('btn-decrease-text').onclick = () => {
+        if (currentFontSize > 8) {
+            currentFontSize -= 2;
+            renderGraph();
+        }
+    };
+    
+    document.getElementById('btn-reset').onclick = () => {
+        currentTransform = null; // Reiniciar estado de zoom
+        renderGraph();
+    };
+
+    window.onload = renderGraph;
+    window.onresize = () => renderGraph();
+</script>
+</body>
+</html>

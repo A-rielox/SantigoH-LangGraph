@@ -1,0 +1,32 @@
+gemini "Eres un Ingeniero Frontend Senior y Arquitecto de Software. Tu objetivo es generar un único archivo 'index.html' que contenga una aplicación web interactiva de un diagrama de flujo, basándote estrictamente en la metodología Spec-Driven Development (SDD). Lee el archivo adjunto 'LangGraph - Ambien Agent.txt' que se encuentra en la raíz de este directorio. Ese archivo contiene el código Mermaid base y todo el contenido técnico que debe ir en los tooltips interactivos de cada nodo. 
+
+A continuación, te presento la Lista Maestra de Requerimientos y Casos Borde que DEBES cumplir al pie de la letra para desarrollar la solución. No omitas código, el archivo HTML entregado debe ser funcional, autocontenido (CSS y JS dentro del HTML) y estar listo para producción.
+
+### ESPECIFICACIONES DE DESARROLLO (SDD)
+
+1. Fase de Análisis y Renderizado Core
+- Carga de Mermaid: Inicializa Mermaid.js vía CDN. Configura 'securityLevel: strict' y 'htmlLabels: false' para evitar problemas de CORS o seguridad al abrir el archivo localmente (file://).
+- Ejecución Asíncrona: Asegúrate de atar la lógica de interactividad SOLO después de que la promesa de renderizado de Mermaid se haya resuelto completamente y el SVG esté presente en el DOM.
+
+2. Lógica de Interfaz y Manejo del DOM
+- Event Delegation (CRÍTICO): NO ates los 'event listeners' (mouseover, mouseout, click) directamente a los nodos del SVG. Usa Event Delegation en el contenedor principal ('#graph-container'). Esto evitará que la interactividad se rompa cuando Mermaid vuelva a renderizar el diagrama al cambiar el tamaño de la fuente.
+- Detección Infalible de Nodos: Identifica sobre qué nodo está el usuario leyendo el atributo 'data-id' o buscando la clase '.node' más cercana en la jerarquía del evento, ya que los selectores CSS fallan en nodos con letras y números (ej. 5a, 13b).
+
+3. Sistema de Tooltips y UX Estricta
+- Renderizado de Contenido: El texto extraído del documento para el tooltip (Qué pasa en el código, State, etc.) debe inyectarse en el tooltip respetando los saltos de línea originales. Usa 'white-space: pre-wrap' en el CSS del tooltip. Los bloques de código deben tener un fondo oscuro para contrastar.
+- Posicionamiento Cuadrante-Consciente: Calcula el 'bounding client rect' del tooltip y compáralo con el tamaño de la ventana ('window.innerWidth/Height'). Si el tooltip se sale por la derecha o por abajo, invierte su posición mediante transformaciones CSS para que nunca se recorte.
+- Puente de Hover y Scroll: Si el usuario mueve el ratón del nodo al tooltip, este NO debe cerrarse. Implementa un 'timeout' de gracia (ej. 200ms) en el evento 'mouseout' que se cancele si el ratón entra en el contenedor del tooltip. El tooltip debe permitir scroll interno si el contenido es muy largo.
+- Corrección de Coordenadas de Zoom: El posicionamiento del tooltip debe usar las coordenadas relativas al 'viewport' (pantalla) y no las coordenadas internas del SVG, para que no se desfacen si el usuario hace zoom.
+
+4. Sistema de Navegación (Pan & Zoom) y Mutación Visual
+- Motor de Zoom: Implementa d3-zoom (vía CDN) para la navegación interactiva. Asegúrate de que el 'transform-origin' del SVG sea '0 0' (arriba a la izquierda) y que las transformaciones se apliquen a un grupo '<g>' interno, no al elemento '<svg>' raíz, para evitar comportamientos erráticos de recorte (clipping).
+- Re-renderizado Dinámico de Texto: Incluye un botón en la UI para 'Aumentar Texto'. Al hacer clic, debes actualizar la directiva de configuración del tema de Mermaid, destruir el DOM actual del gráfico y forzar a Mermaid a re-dibujar desde cero para que recalcule físicamente las cajas delimitadoras de los nodos y el texto no se salga de los recuadros. Separar esta acción del zoom visual (escalado de D3).
+
+5. Integridad de Contenido
+- Extracción Exhaustiva: El diagrama tiene 16 pasos/nodos (incluyendo a, b, c). Asigna correctamente la explicación técnica detallada de las 'Parte 1', 'Parte 2' y 'Parte 3' del documento adjunto a cada ID de nodo correspondiente en una estructura de datos (diccionario/objeto en JS) antes de inyectarla. No uses textos de relleno ('Lorem ipsum' o '...').
+
+Genera el código HTML completo."
+
+
+
+dentro de cada tooltip quiero que coloques el texto correspondiente que generaste en el archivo detalle-laboratorio-04

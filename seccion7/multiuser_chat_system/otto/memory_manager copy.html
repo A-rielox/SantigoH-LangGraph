@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Manager Architecture - Interactive Flowchart</title>
+    <!-- Mermaid.js -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <!-- D3.js for Pan & Zoom -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --tooltip-bg: #111111;
+            --tooltip-text: #ffffff;
+            --accent-color: #28a745;
+            --code-text: #00ffff;
+            --bold-text: #ffcc00;
+            --header-bg: #ffffff;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+        }
+
+        #app-container {
+            display: flex;
+            flex-direction: column;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #header {
+            padding: 12px 24px;
+            background: var(--header-bg);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: #1a1a1a;
+            font-weight: 700;
+        }
+
+        #controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 14px;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(40,167,69,0.2);
+        }
+
+        .btn:hover {
+            background-color: #218838;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(40,167,69,0.3);
+        }
+
+        #graph-container {
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+            background-color: white;
+            overflow: hidden;
+        }
+
+        #graph-container:active {
+            cursor: grabbing;
+        }
+
+        #tooltip {
+            position: fixed;
+            background-color: var(--tooltip-bg);
+            color: var(--tooltip-text);
+            padding: 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.6;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 9999;
+            white-space: pre-wrap;
+            border: 1px solid #444;
+        }
+
+        #tooltip.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #tooltip h3 {
+            margin: 0 0 15px 0;
+            border-bottom: 2px solid #00ffff;
+            padding-bottom: 10px;
+            color: #4dabff;
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        #tooltip code {
+            background-color: #222;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            color: var(--code-text);
+            font-weight: 600;
+        }
+
+        #tooltip b {
+            color: var(--bold-text);
+        }
+
+        #tooltip pre {
+            background-color: #000;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 13px;
+            border: 1px solid #333;
+            color: #d1d1d1;
+        }
+
+        .node:hover rect, .node:hover circle, .node:hover polygon {
+            filter: drop-shadow(0 0 8px rgba(40,167,69,0.6));
+            stroke-width: 3px !important;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <div id="header">
+        <h1>ModernMemoryManager: Multi-Layer Memory Interaction</h1>
+        <div id="controls">
+            <button class="btn" id="btn-increase-text">Aumentar Texto</button>
+            <button class="btn" id="btn-decrease-text">Disminuir Texto</button>
+            <button class="btn" id="btn-reset">Reset Zoom</button>
+        </div>
+    </div>
+    <div id="graph-container"></div>
+    <div id="tooltip"></div>
+</div>
+
+<script>
+    const container = document.getElementById('graph-container');
+    const tooltipEl = document.getElementById('tooltip');
+
+    // PILAR 1: DICCIONARIO DE DATOS (Ingeniería Inversa de memory_manager.py)
+    const nodeData = {
+        "INPUT": {
+            title: "Entrada de Usuario: HumanMessage",
+            content: "<b>Qué pasa en el código:</b>\nEl flujo comienza cuando el usuario envía un mensaje. Este mensaje es capturado por el sistema de chat y procesado por <code>ModernMemoryManager</code>.\n\n<b>Contexto de Usuario:</b>\nSe utiliza un <code>user_id</code> para aislar los datos. El sistema verifica la existencia del directorio en <code>USERS_DIR</code> y carga las configuraciones de <code>config.py</code>.\n\n<b>Evolución del Estado:</b>\nEl mensaje se añade a la lista <code>messages</code> del <code>MemoryState</code> usando el reductor <code>add_messages</code>."
+        },
+        "JSON_META": {
+            title: "Gestión de Chats: Metadatos JSON",
+            content: "<b>Qué pasa en el código:</b>\nImplementa una capa de persistencia ligera para la lista de conversaciones usando archivos JSON.\n\n<b>Lógica de Creación:</b>\n<pre>chat_id = str(uuid.uuid4())\ntitle = self._generate_chat_title(first_message)\nnew_chat = {\n    'chat_id': chat_id,\n    'title': title,\n    'created_at': datetime.now().isoformat(),\n    'message_count': 0\n}</pre>\n\n<b>Metadatos:</b>\nActualiza <code>chats_meta.json</code> incrementando <code>message_count</code> y actualizando <code>updated_at</code> en cada interacción."
+        },
+        "EXTRACT": {
+            title: "Extracción Inteligente: LLM Memory Chain",
+            content: "<b>Qué pasa en el código:</b>\nUtiliza un LLM con <code>PydanticOutputParser</code> para destilar información transversal.\n\n<b>Prompt Template:</b>\n<pre>template=\"\"\"Analiza el mensaje y determina información importante.\nCategorías: personal, profesional, preferencias, hechos_importantes.\nSi no hay nada relevante, categoría 'none'.\"\"\"</pre>\n\n<b>Lógica de Almacenamiento:</b>\nSolo si <code>extracted_memory.importance >= 2</code>, se procede a guardar en la base vectorial.\n\n<b>Fallback Manual:</b>\nSi el LLM falla, usa <code>_extract_memories_manual</code> con reglas basadas en palabras clave como 'me llamo', 'trabajo en', 'me gusta'."
+        },
+        "CHROMA": {
+            title: "Memoria Transversal: ChromaDB",
+            content: "<b>Qué pasa en el código:</b>\nBase de datos vectorial para persistencia a largo plazo entre sesiones.\n\n<b>Configuración:</b>\n<pre>self.vectorstore = Chroma(\n    collection_name=f\"memoria_{self.user_id}\",\n    embedding_function=OpenAIEmbeddings(model=\"text-embedding-3-large\"),\n    persist_directory=self.chromadb_path\n)</pre>\n\n<b>Metadatos del Vector:</b>\nIncluye <code>category</code>, <code>importance</code>, y <code>original_message</code> (truncado a 200 caracteres) para trazabilidad."
+        },
+        "STATE": {
+            title: "Estado Global: MemoryState (TypedDict)",
+            content: "<b>Definición del Schema:</b>\n<pre>class MemoryState(TypedDict):\n    messages: Annotated[List[BaseMessage], add_messages]\n    vector_memories: List[str]\n    user_profile: Dict[str, Any]\n    last_memory_extraction: Optional[str]</pre>\n\n<b>Actualización Dinámica:</b>\n- <code>vector_memories</code>: Se llena con los resultados de <code>search_vector_memory</code>.\n- <code>user_profile</code>: Diccionario con datos extraídos de la memoria transversal."
+        },
+        "LANGGRAPH": {
+            title: "Persistencia: SQLite & Checkpointers",
+            content: "<b>Qué pasa en el código:</b>\nLangGraph utiliza un <code>SqliteSaver</code> para gestionar los checkpoints del grafo.\n\n<b>Ruta de Base de Datos:</b>\nCada usuario tiene su propia base de datos: <code>{user_dir}/langgraph_memory.db</code>.\n\n<b>Propósito:</b>\nPermite el 'time travel' y la recuperación de estados previos del chat, manteniendo la coherencia de la ventana de mensajes (Short-term memory)."
+        }
+    };
+
+    // PILAR 2: CÓDIGO MERMAID
+    const mermaidSource = `
+graph TD
+    INPUT((Mensaje Usuario)):::start_end --> JSON_META[Gestión Metadatos JSON]
+    JSON_META --> EXTRACT[Extracción Inteligente LLM]
+    EXTRACT -->|¿Info Relevante? <br> Update: ChromaDB| CHROMA[ChromaDB: Memoria Transversal]
+    INPUT --> SEARCH{Búsqueda Semántica}
+    SEARCH -->|Query| CHROMA
+    CHROMA -->|Contexto Recuperado <br> Update: vector_memories| STATE[MemoryState: Estado LangGraph]
+    STATE --> LANGGRAPH[LangGraph Persistence: SQLite]
+    LANGGRAPH --> END((Respuesta Generada)):::start_end
+
+    classDef start_end fill:#ffffff,stroke:#000,stroke-width:2px;
+    classDef node_logic fill:#ffffff,stroke:#000,stroke-width:1px;
+    classDef decision fill:#ffffff,stroke:#000,stroke-width:2px;
+    `;
+
+    let currentFontSize = 14;
+    let zoomBehavior;
+    let svgGroup;
+    let currentTransform = null;
+    let hideTimeout;
+
+    const mermaidConfig = {
+        startOnLoad: false,
+        securityLevel: 'strict',
+        theme: 'base',
+        themeVariables: {
+            primaryColor: '#ffffff',
+            primaryTextColor: '#000000',
+            primaryBorderColor: '#000000',
+            lineColor: '#000000',
+            secondaryColor: '#ffffff',
+            tertiaryColor: '#ffffff',
+            nodeBorder: '#000000',
+            mainBkg: '#ffffff',
+            nodeTextColor: '#000000',
+            edgeLabelBackground: '#ffffff',
+            fontSize: '14px'
+        },
+        flowchart: { useMaxWidth: false, htmlLabels: true, curve: 'basis' }
+    };
+
+    async function renderGraph() {
+        const oldSvg = container.querySelector("svg");
+        if (oldSvg) currentTransform = d3.zoomTransform(oldSvg);
+
+        container.innerHTML = '';
+        const renderId = "mermaid-svg-" + Date.now();
+        
+        mermaid.initialize({
+            ...mermaidConfig,
+            themeVariables: { ...mermaidConfig.themeVariables, fontSize: currentFontSize + 'px' }
+        });
+
+        const { svg } = await mermaid.render(renderId, mermaidSource);
+        container.insertAdjacentHTML('beforeend', svg);
+        
+        const svgElement = container.querySelector('svg');
+        svgElement.removeAttribute('width');
+        svgElement.removeAttribute('height');
+        svgElement.style.width = '100%';
+        svgElement.style.height = '100%';
+
+        setTimeout(() => {
+            initZoom(svgElement);
+            attachInteractivity();
+        }, 50);
+    }
+
+    function initZoom(svgElement) {
+        const d3Svg = d3.select(svgElement);
+        svgGroup = d3Svg.select('g');
+        
+        zoomBehavior = d3.zoom()
+            .scaleExtent([0.1, 10])
+            .on('zoom', (event) => svgGroup.attr('transform', event.transform));
+
+        d3Svg.call(zoomBehavior);
+        
+        if (currentTransform) {
+            d3Svg.call(zoomBehavior.transform, currentTransform);
+        } else {
+            const viewBox = svgElement.viewBox.baseVal;
+            const width = viewBox.width || 800;
+            const height = viewBox.height || 600;
+            const fullWidth = container.clientWidth;
+            const fullHeight = container.clientHeight;
+            
+            const initialScale = Math.min(fullWidth / width, fullHeight / height) * 0.8;
+            const transform = d3.zoomIdentity
+                .translate(fullWidth / 2 - initialScale * (viewBox.x + width / 2), fullHeight / 2 - initialScale * (viewBox.y + height / 2))
+                .scale(initialScale);
+            d3Svg.call(zoomBehavior.transform, transform);
+        }
+    }
+
+    function attachInteractivity() {
+        container.onmouseover = (e) => {
+            const node = e.target.closest('.node');
+            if (node) {
+                clearTimeout(hideTimeout);
+                const id = getCleanId(node.id);
+                if (id && nodeData[id]) showTooltip(node, nodeData[id]);
+            }
+        };
+
+        container.onmouseout = (e) => {
+            if (e.target.closest('.node')) {
+                hideTimeout = setTimeout(() => {
+                    tooltipEl.classList.remove('visible');
+                }, 300); 
+            }
+        };
+
+        tooltipEl.onmouseenter = () => clearTimeout(hideTimeout);
+        tooltipEl.onmouseleave = () => tooltipEl.classList.remove('visible');
+        
+        container.onclick = (e) => {
+            const node = e.target.closest('.node');
+            if (node) {
+                const id = getCleanId(node.id);
+                if (id && nodeData[id]) showTooltip(node, nodeData[id]);
+            }
+        };
+    }
+
+    function getCleanId(nodeId) {
+        const match = nodeId.match(/flowchart-(.*?)-[0-9]+/);
+        let id = match ? match[1] : nodeId;
+        
+        if (id.includes('INPUT')) return 'INPUT';
+        if (id.includes('JSON_META')) return 'JSON_META';
+        if (id.includes('EXTRACT')) return 'EXTRACT';
+        if (id.includes('CHROMA')) return 'CHROMA';
+        if (id.includes('STATE')) return 'STATE';
+        if (id.includes('LANGGRAPH')) return 'LANGGRAPH';
+        
+        return Object.keys(nodeData).find(key => nodeId.includes(key)) || id;
+    }
+
+    function showTooltip(nodeElement, data) {
+        tooltipEl.innerHTML = `<h3>${data.title}</h3><div>${data.content}</div>`;
+        tooltipEl.classList.add('visible');
+
+        const rect = nodeElement.getBoundingClientRect();
+        const tooltipRect = tooltipEl.getBoundingClientRect();
+        
+        let top = rect.bottom + 15;
+        let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+
+        if (left + tooltipRect.width > window.innerWidth - 20) {
+            left = window.innerWidth - tooltipRect.width - 20;
+        }
+        if (left < 20) left = 20;
+
+        if (top + tooltipRect.height > window.innerHeight - 20) {
+            top = rect.top - tooltipRect.height - 15;
+        }
+        if (top < 20) top = 20;
+
+        tooltipEl.style.top = top + 'px';
+        tooltipEl.style.left = left + 'px';
+    }
+
+    document.getElementById('btn-increase-text').onclick = () => {
+        currentFontSize += 2;
+        renderGraph();
+    };
+    
+    document.getElementById('btn-decrease-text').onclick = () => {
+        if (currentFontSize > 8) {
+            currentFontSize -= 2;
+            renderGraph();
+        }
+    };
+    
+    document.getElementById('btn-reset').onclick = () => {
+        currentTransform = null;
+        renderGraph();
+    };
+
+    window.onload = renderGraph;
+    window.onresize = () => renderGraph();
+</script>
+</body>
+</html>
